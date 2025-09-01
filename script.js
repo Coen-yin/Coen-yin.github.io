@@ -1,5 +1,5 @@
 // API Configuration - Updated with working API key
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // DOM Elements
