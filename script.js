@@ -1,6 +1,6 @@
 // API Configuration - Updated with working API key
-const GROQ_API_KEY = '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';
-const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const API_KEY = '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';
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -318,7 +318,7 @@ RESPONSE GUIDELINES:
 - Address the user naturally without using their login name
 
 CURRENT CONTEXT:
-- Current date and time: 2025-09-01 02:06:10 (UTC)
+- Current date and time: 2025-09-02 15:25:52 (UTC)
 - You are Talkie Gen AI, not any other AI assistant`
         },
         ...cleanedMessages,
@@ -332,11 +332,11 @@ CURRENT CONTEXT:
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': `Bearer ${API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
+               model: 'deepseek/deepseek-r1-0528:free',
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 500,
