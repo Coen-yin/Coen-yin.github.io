@@ -1,5 +1,5 @@
 // API Configuration - Updated with working API key
-const API_KEY = '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';
+const API_KEY = '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';
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // DOM Elements
