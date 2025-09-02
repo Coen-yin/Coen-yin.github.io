@@ -1,6 +1,6 @@
 // API Configuration - Updated with working API key
-const API_KEY = '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';
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const GROQ_API_KEY = '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';
+const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -332,11 +332,11 @@ CURRENT CONTEXT:
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${API_KEY}`,
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-               model: 'google/gemini-2.0-flash-exp:free',
+               model: 'openai/gpt-oss-120b',
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 500,
