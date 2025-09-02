@@ -336,7 +336,7 @@ CURRENT CONTEXT:
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-               model: 'deepseek/deepseek-r1-0528:free',
+               model: 'deepseek/deepseek-r1:free',
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 500,
