@@ -39,16 +39,31 @@
             <div class="sidebar-footer">
                 <div class="user-menu" id="userMenu">
                     <div class="user-avatar">
-                        <span>C</span>
+                        <span id="userAvatar">G</span>
                         <div class="avatar-status"></div>
                     </div>
                     <div class="user-info">
-                        <span class="username">Beta</span>
-                        <span class="user-status">Online</span>
+                        <span class="username" id="displayUsername">Guest</span>
+                        <span class="user-status" id="userStatus">Not signed in</span>
                     </div>
                     <i class="fas fa-chevron-up"></i>
                 </div>
                 <div class="user-dropdown" id="userDropdown">
+                    <!-- Auth buttons (shown when not logged in) -->
+                    <button class="dropdown-item" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Sign In</span>
+                    </button>
+                    <button class="dropdown-item" id="signupBtn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Sign Up</span>
+                    </button>
+                    
+                    <!-- User menu items (shown when logged in) -->
+                    <button class="dropdown-item" id="profileBtn" style="display: none;">
+                        <i class="fas fa-user"></i>
+                        <span>Profile</span>
+                    </button>
                     <button class="dropdown-item" id="themeToggle">
                         <i class="fas fa-moon"></i>
                         <span>Dark mode</span>
@@ -60,6 +75,12 @@
                     <button class="dropdown-item" id="clearAllBtn">
                         <i class="fas fa-trash"></i>
                         <span>Clear all</span>
+                    </button>
+                    
+                    <!-- Logout button (shown when logged in) -->
+                    <button class="dropdown-item" id="logoutBtn" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Sign Out</span>
                     </button>
                 </div>
             </div>
@@ -223,6 +244,63 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Authentication Modals -->
+    <div class="modal-overlay" id="authModalOverlay">
+        <!-- Login Modal -->
+        <div class="auth-modal" id="loginModal">
+            <div class="modal-header">
+                <h2>Welcome back</h2>
+                <p>Sign in to your account</p>
+                <button class="modal-close" id="closeLoginModal">&times;</button>
+            </div>
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="#" id="showSignupModal">Sign up</a></p>
+            </div>
+        </div>
+
+        <!-- Signup Modal -->
+        <div class="auth-modal" id="signupModal">
+            <div class="modal-header">
+                <h2>Create account</h2>
+                <p>Join Talkie Gen AI today</p>
+                <button class="modal-close" id="closeSignupModal">&times;</button>
+            </div>
+            <form class="auth-form" id="signupForm">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input type="text" id="signupName" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <button type="submit" class="auth-btn">Create Account</button>
+            </form>
+            <div class="auth-footer">
+                <p>Already have an account? <a href="#" id="showLoginModal">Sign in</a></p>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>

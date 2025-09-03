@@ -23,14 +23,34 @@ const toastContainer = document.getElementById('toastContainer');
 const attachBtn = document.getElementById('attachBtn');
 const voiceBtn = document.getElementById('voiceBtn');
 
+// Authentication DOM Elements
+const authModalOverlay = document.getElementById('authModalOverlay');
+const loginModal = document.getElementById('loginModal');
+const signupModal = document.getElementById('signupModal');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const profileBtn = document.getElementById('profileBtn');
+const closeLoginModal = document.getElementById('closeLoginModal');
+const closeSignupModal = document.getElementById('closeSignupModal');
+const showSignupModal = document.getElementById('showSignupModal');
+const showLoginModal = document.getElementById('showLoginModal');
+const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+const userAvatar = document.getElementById('userAvatar');
+const displayUsername = document.getElementById('displayUsername');
+const userStatus = document.getElementById('userStatus');
+
 // State
 let currentChatId = null;
 let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
 let isGenerating = false;
+let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
+    initializeAuth();
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
@@ -63,6 +83,171 @@ function updateThemeToggle(theme) {
     }
 }
 
+// Authentication Management
+function initializeAuth() {
+    updateUserInterface();
+}
+
+function updateUserInterface() {
+    if (currentUser) {
+        // User is logged in
+        displayUsername.textContent = currentUser.name;
+        userStatus.textContent = 'Online';
+        userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+        
+        // Show user menu items
+        profileBtn.style.display = 'flex';
+        logoutBtn.style.display = 'flex';
+        loginBtn.style.display = 'none';
+        signupBtn.style.display = 'none';
+    } else {
+        // User is not logged in
+        displayUsername.textContent = 'Guest';
+        userStatus.textContent = 'Not signed in';
+        userAvatar.textContent = 'G';
+        
+        // Show auth buttons
+        profileBtn.style.display = 'none';
+        logoutBtn.style.display = 'none';
+        loginBtn.style.display = 'flex';
+        signupBtn.style.display = 'flex';
+    }
+}
+
+function showAuthModal(modalType) {
+    authModalOverlay.classList.add('active');
+    
+    if (modalType === 'login') {
+        loginModal.classList.add('active');
+        signupModal.classList.remove('active');
+    } else {
+        signupModal.classList.add('active');
+        loginModal.classList.remove('active');
+    }
+    
+    document.body.style.overflow = 'hidden';
+}
+
+function hideAuthModal() {
+    authModalOverlay.classList.remove('active');
+    loginModal.classList.remove('active');
+    signupModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+    
+    // Clear forms
+    loginForm.reset();
+    signupForm.reset();
+}
+
+function hashPassword(password) {
+    // Simple hash function for demo purposes - NOT secure for production
+    let hash = 0;
+    if (password.length === 0) return hash;
+    for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString();
+}
+
+function handleSignup(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Validation
+    if (!name || !email || !password) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    // Check if user already exists
+    const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    if (existingUsers[email]) {
+        showToast('An account with this email already exists', 'error');
+        return;
+    }
+    
+    // Create new user
+    const hashedPassword = hashPassword(password);
+    const newUser = {
+        name,
+        email,
+        password: hashedPassword,
+        createdAt: new Date().toISOString()
+    };
+    
+    // Save user
+    existingUsers[email] = newUser;
+    localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
+    
+    // Log in the user
+    currentUser = { name, email };
+    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    hideAuthModal();
+    updateUserInterface();
+    showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+}
+
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    
+    // Validation
+    if (!email || !password) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    // Check credentials
+    const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = existingUsers[email];
+    
+    if (!user) {
+        showToast('No account found with this email', 'error');
+        return;
+    }
+    
+    const hashedPassword = hashPassword(password);
+    if (user.password !== hashedPassword) {
+        showToast('Incorrect password', 'error');
+        return;
+    }
+    
+    // Log in the user
+    currentUser = { name: user.name, email: user.email };
+    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    hideAuthModal();
+    updateUserInterface();
+    showToast(`Welcome back, ${user.name}!`, 'success');
+}
+
+function handleLogout() {
+    currentUser = null;
+    localStorage.removeItem('talkie-user');
+    updateUserInterface();
+    userDropdown.classList.remove('show');
+    showToast('You have been signed out', 'success');
+}
+
 // Event Listeners
 function setupEventListeners() {
     sidebarToggle.addEventListener('click', toggleSidebar);
@@ -77,6 +262,24 @@ function setupEventListeners() {
     sendButton.addEventListener('click', sendMessage);
     attachBtn.addEventListener('click', handleAttachment);
     voiceBtn.addEventListener('click', handleVoiceInput);
+
+    // Authentication event listeners
+    loginBtn.addEventListener('click', () => showAuthModal('login'));
+    signupBtn.addEventListener('click', () => showAuthModal('signup'));
+    logoutBtn.addEventListener('click', handleLogout);
+    closeLoginModal.addEventListener('click', hideAuthModal);
+    closeSignupModal.addEventListener('click', hideAuthModal);
+    showSignupModal.addEventListener('click', () => showAuthModal('signup'));
+    showLoginModal.addEventListener('click', () => showAuthModal('login'));
+    loginForm.addEventListener('submit', handleLogin);
+    signupForm.addEventListener('submit', handleSignup);
+    
+    // Close modal on overlay click
+    authModalOverlay.addEventListener('click', (e) => {
+        if (e.target === authModalOverlay) {
+            hideAuthModal();
+        }
+    });
 
     document.addEventListener('click', (e) => {
         if (!userMenu.contains(e.target)) {
@@ -96,6 +299,7 @@ function handleKeyboardShortcuts(e) {
     if (e.key === 'Escape') {
         closeSidebar();
         userDropdown.classList.remove('show');
+        hideAuthModal();
     }
 }
 
