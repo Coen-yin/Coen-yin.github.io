@@ -952,7 +952,7 @@ CURRENT CONTEXT:
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-               model: 'llama3-groq-70b-8192-tool-use-preview',
+               model: 'openai/gpt-oss-120b',
                 messages: messages,
                 temperature: 0.3,
                 max_tokens: 1500,
