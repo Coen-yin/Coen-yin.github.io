@@ -881,6 +881,13 @@ ENHANCED RESPONSE GUIDELINES:
 - Offer deeper insights, multiple perspectives, and advanced analysis
 - Include relevant examples, analogies, and cross-referential knowledge
 
+CODE FORMATTING REQUIREMENTS:
+- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
+- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
+- For coding questions, provide complete, working examples within code blocks
+- Never provide code without proper markdown formatting
+- When showing multiple files or code snippets, use separate code blocks for each
+
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
 - You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities
@@ -909,9 +916,15 @@ RESPONSE GUIDELINES:
 - For current events, acknowledge your knowledge cutoff and suggest checking recent reliable sources
 - When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful guidance
 - For image analysis requests, offer to help with common image-related questions
-- For coding questions, provide working examples
 - Use clear, simple language
 - Be conversational but informative
+
+CODE FORMATTING REQUIREMENTS:
+- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
+- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
+- For coding questions, provide complete, working examples within code blocks
+- Never provide code without proper markdown formatting
+- When showing multiple files or code snippets, use separate code blocks for each
 
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
@@ -939,10 +952,10 @@ CURRENT CONTEXT:
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-               model: 'openai/gpt-oss-120b',
+               model: 'llama3-groq-70b-8192-tool-use-preview',
                 messages: messages,
-                temperature: 0.7,
-                max_tokens: 500,
+                temperature: 0.3,
+                max_tokens: 1500,
                 top_p: 0.9,
                 stream: false
             })
@@ -1214,9 +1227,19 @@ function copyCodeBlock(blockId) {
 function copyMessage(encodedContent) {
     const content = decodeURIComponent(encodedContent);
     navigator.clipboard.writeText(content).then(() => {
-        // Copy successful - no toast message
+        showToast('Message copied to clipboard!', 'success');
     }).catch(() => {
-        console.error('Failed to copy message');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = content;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        showToast('Message copied to clipboard!', 'success');
     });
 }
 
