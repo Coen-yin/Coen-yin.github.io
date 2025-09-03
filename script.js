@@ -41,6 +41,17 @@ const userAvatar = document.getElementById('userAvatar');
 const displayUsername = document.getElementById('displayUsername');
 const userStatus = document.getElementById('userStatus');
 
+// Profile DOM Elements
+const profileModalOverlay = document.getElementById('profileModalOverlay');
+const profileModal = document.getElementById('profileModal');
+const closeProfileModal = document.getElementById('closeProfileModal');
+const profileForm = document.getElementById('profileForm');
+const profilePhotoInput = document.getElementById('profilePhotoInput');
+const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+const currentPhoto = document.getElementById('currentPhoto');
+const photoPreview = document.getElementById('photoPreview');
+
 // State
 let currentChatId = null;
 let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
@@ -51,10 +62,57 @@ let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
     initializeAuth();
+    checkProUpgrade(); // Check for pro upgrade URL
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
 });
+
+// Check for Pro upgrade URL parameter
+function checkProUpgrade() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const upgradeParam = urlParams.get('upgrade');
+    const secretParam = urlParams.get('secret');
+    
+    // Secret pro upgrade link
+    if (upgradeParam === 'pro' && secretParam === 'talkiegen2024') {
+        if (currentUser) {
+            // Upgrade current user to pro
+            upgradeToPro();
+        } else {
+            // Store pro upgrade for after login
+            sessionStorage.setItem('pendingProUpgrade', 'true');
+            showToast('Please sign in to activate your Pro upgrade!', 'info');
+        }
+        
+        // Clean URL without reloading page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
+// Upgrade user to Pro status
+function upgradeToPro() {
+    if (!currentUser) return;
+    
+    // Update user data
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    if (users[currentUser.email]) {
+        users[currentUser.email].isPro = true;
+        users[currentUser.email].proUpgradeDate = new Date().toISOString();
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+    }
+    
+    // Update current user session
+    currentUser.isPro = true;
+    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    // Update UI
+    updateUserInterface();
+    initializeTheme(); // Refresh theme options
+    
+    showToast('🎉 Welcome to Talkie Gen Pro! You now have access to exclusive features.', 'success');
+}
 
 // Theme Management
 function initializeTheme() {
@@ -65,7 +123,22 @@ function initializeTheme() {
 
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    let newTheme;
+    
+    if (currentUser && currentUser.isPro) {
+        // Pro users can cycle through light -> dark -> pro
+        if (currentTheme === 'light') {
+            newTheme = 'dark';
+        } else if (currentTheme === 'dark') {
+            newTheme = 'pro';
+        } else {
+            newTheme = 'light';
+        }
+    } else {
+        // Free users only toggle between light and dark
+        newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    }
+    
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('talkie-theme', newTheme);
     updateThemeToggle(newTheme);
@@ -74,8 +147,12 @@ function toggleTheme() {
 function updateThemeToggle(theme) {
     const icon = themeToggle.querySelector('i');
     const text = themeToggle.querySelector('span');
+    
     if (theme === 'dark') {
-        icon.className = 'fas fa-sun';
+        icon.className = 'fas fa-palette';
+        text.textContent = currentUser && currentUser.isPro ? 'Pro mode' : 'Light mode';
+    } else if (theme === 'pro') {
+        icon.className = 'fas fa-crown';
         text.textContent = 'Light mode';
     } else {
         icon.className = 'fas fa-moon';
@@ -91,12 +168,22 @@ function initializeAuth() {
 function updateUserInterface() {
     if (currentUser) {
         // User is logged in
-        displayUsername.textContent = currentUser.name;
-        userStatus.textContent = 'Online';
-        userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+        const displayName = currentUser.name + (currentUser.isPro ? ' Pro' : '');
+        displayUsername.innerHTML = currentUser.isPro ? 
+            `${currentUser.name} <span class="pro-badge">Pro</span>` : 
+            currentUser.name;
         
-        // Show user menu items
-        profileBtn.style.display = 'flex';
+        userStatus.textContent = 'Online';
+        
+        // Set user avatar - either custom photo or initials
+        if (currentUser.profilePhoto) {
+            userAvatar.innerHTML = `<img src="${currentUser.profilePhoto}" alt="Profile">`;
+        } else {
+            userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+        }
+        
+        // Show user menu items - Profile only for Pro users
+        profileBtn.style.display = currentUser.isPro ? 'flex' : 'none';
         logoutBtn.style.display = 'flex';
         loginBtn.style.display = 'none';
         signupBtn.style.display = 'none';
@@ -188,7 +275,9 @@ function handleSignup(event) {
         name,
         email,
         password: hashedPassword,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        isPro: false,
+        profilePhoto: null
     };
     
     // Save user
@@ -196,8 +285,14 @@ function handleSignup(event) {
     localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
     
     // Log in the user
-    currentUser = { name, email };
+    currentUser = { name, email, isPro: false, profilePhoto: null };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    // Check for pending pro upgrade
+    if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+        sessionStorage.removeItem('pendingProUpgrade');
+        upgradeToPro();
+    }
     
     hideAuthModal();
     updateUserInterface();
@@ -232,11 +327,23 @@ function handleLogin(event) {
     }
     
     // Log in the user
-    currentUser = { name: user.name, email: user.email };
+    currentUser = { 
+        name: user.name, 
+        email: user.email, 
+        isPro: user.isPro || false,
+        profilePhoto: user.profilePhoto || null
+    };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    // Check for pending pro upgrade
+    if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+        sessionStorage.removeItem('pendingProUpgrade');
+        upgradeToPro();
+    }
     
     hideAuthModal();
     updateUserInterface();
+    initializeTheme(); // Refresh theme options for potential Pro user
     showToast(`Welcome back, ${user.name}!`, 'success');
 }
 
@@ -274,10 +381,24 @@ function setupEventListeners() {
     loginForm.addEventListener('submit', handleLogin);
     signupForm.addEventListener('submit', handleSignup);
     
+    // Profile management event listeners
+    profileBtn.addEventListener('click', showProfileModal);
+    closeProfileModal.addEventListener('click', hideProfileModal);
+    profileForm.addEventListener('submit', handleProfileUpdate);
+    uploadPhotoBtn.addEventListener('click', () => profilePhotoInput.click());
+    profilePhotoInput.addEventListener('change', handlePhotoUpload);
+    removePhotoBtn.addEventListener('click', removeProfilePhoto);
+    
     // Close modal on overlay click
     authModalOverlay.addEventListener('click', (e) => {
         if (e.target === authModalOverlay) {
             hideAuthModal();
+        }
+    });
+    
+    profileModalOverlay.addEventListener('click', (e) => {
+        if (e.target === profileModalOverlay) {
+            hideProfileModal();
         }
     });
 
@@ -501,10 +622,33 @@ async function getAIResponse(userMessage) {
         content: msg.content
     }));
 
-    const messages = [
-        {
-            role: 'system',
-            content: `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
+    // Create different system messages for Pro vs Free users
+    let systemContent;
+    if (currentUser && currentUser.isPro) {
+        systemContent = `You are Talkie Gen AI Pro, an advanced and highly sophisticated AI assistant created in 2024. 
+
+IMPORTANT IDENTITY:
+- Always identify yourself as "Talkie Gen AI Pro" when asked about your name or identity
+- You are the premium version with enhanced capabilities and deeper knowledge
+- Never mention being ChatGPT, Claude, or any other AI system
+- Maintain a more intellectual and professional tone befitting your Pro status
+- Do not address the user by name unless they specifically provide it in conversation
+
+ENHANCED RESPONSE GUIDELINES:
+- Provide more detailed, nuanced, and comprehensive responses (150-300 words)
+- Use sophisticated vocabulary and complex sentence structures
+- Offer deeper insights, multiple perspectives, and advanced analysis
+- Include relevant examples, analogies, and cross-referential knowledge
+- Demonstrate advanced reasoning and critical thinking skills
+- Be more conversational yet maintain intellectual sophistication
+- For technical questions, provide in-depth explanations with context
+- Show awareness of cutting-edge developments and emerging trends
+
+CURRENT CONTEXT:
+- Current date and time: 2025-09-02 15:25:52 (UTC)
+- You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities`;
+    } else {
+        systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
 
 IMPORTANT IDENTITY:
 - Always identify yourself as "Talkie Gen AI" when asked about your name or identity
@@ -523,7 +667,13 @@ RESPONSE GUIDELINES:
 
 CURRENT CONTEXT:
 - Current date and time: 2025-09-02 15:25:52 (UTC)
-- You are Talkie Gen AI, not any other AI assistant`
+- You are Talkie Gen AI, not any other AI assistant`;
+    }
+
+    const messages = [
+        {
+            role: 'system',
+            content: systemContent
         },
         ...cleanedMessages,
         {
@@ -815,13 +965,17 @@ function handleVoiceInput() {
 
 // Toast System - Only for important errors
 function showToast(message, type = 'info') {
-    if (type === 'error') {
+    if (type === 'error' || type === 'success') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         
+        let iconClass = 'fas fa-info-circle';
+        if (type === 'error') iconClass = 'fas fa-exclamation-circle';
+        if (type === 'success') iconClass = 'fas fa-check-circle';
+        
         toast.innerHTML = `
             <div class="toast-icon">
-                <i class="fas fa-exclamation-circle"></i>
+                <i class="${iconClass}"></i>
             </div>
             <div class="toast-message">${message}</div>
         `;
@@ -901,3 +1055,118 @@ additionalStyles.textContent = `
     }
 `;
 document.head.appendChild(additionalStyles);
+
+// Profile Management Functions
+function showProfileModal() {
+    if (!currentUser) return;
+    
+    profileModalOverlay.classList.add('active');
+    profileModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Populate form with current user data
+    document.getElementById('profileName').value = currentUser.name;
+    
+    // Set up photo preview
+    if (currentUser.profilePhoto) {
+        photoPreview.innerHTML = `<img src="${currentUser.profilePhoto}" alt="Profile">`;
+        removePhotoBtn.style.display = 'block';
+    } else {
+        photoPreview.textContent = currentUser.name.charAt(0).toUpperCase();
+        removePhotoBtn.style.display = 'none';
+    }
+}
+
+function hideProfileModal() {
+    profileModalOverlay.classList.remove('active');
+    profileModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+    profileForm.reset();
+}
+
+function handleProfileUpdate(event) {
+    event.preventDefault();
+    
+    const newName = document.getElementById('profileName').value.trim();
+    if (!newName) {
+        showToast('Name cannot be empty', 'error');
+        return;
+    }
+    
+    // Update user data
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    if (users[currentUser.email]) {
+        users[currentUser.email].name = newName;
+        if (currentUser.profilePhoto) {
+            users[currentUser.email].profilePhoto = currentUser.profilePhoto;
+        }
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+    }
+    
+    // Update current user session
+    currentUser.name = newName;
+    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    hideProfileModal();
+    updateUserInterface();
+    showToast('Profile updated successfully!', 'success');
+}
+
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('Image must be smaller than 2MB', 'error');
+        return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageData = e.target.result;
+        
+        // Update preview
+        photoPreview.innerHTML = `<img src="${imageData}" alt="Profile">`;
+        removePhotoBtn.style.display = 'block';
+        
+        // Store in user data
+        currentUser.profilePhoto = imageData;
+        
+        // Update database
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        if (users[currentUser.email]) {
+            users[currentUser.email].profilePhoto = imageData;
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+        }
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        updateUserInterface();
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeProfilePhoto() {
+    // Remove photo data
+    currentUser.profilePhoto = null;
+    
+    // Update database
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    if (users[currentUser.email]) {
+        delete users[currentUser.email].profilePhoto;
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+    }
+    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    
+    // Update preview
+    photoPreview.textContent = currentUser.name.charAt(0).toUpperCase();
+    removePhotoBtn.style.display = 'none';
+    
+    updateUserInterface();
+}
