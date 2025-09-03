@@ -1096,6 +1096,11 @@ function detectLanguage(code) {
         return 'css';
     }
     
+    // SQL detection (check first for more specific patterns)
+    if (trimmedCode.match(/\b(select|insert|update|delete|create|alter|drop|from|where|join|group\s+by|order\s+by)\b/i)) {
+        return 'sql';
+    }
+    
     // JavaScript detection
     if (trimmedCode.includes('function') || trimmedCode.includes('const ') || 
         trimmedCode.includes('let ') || trimmedCode.includes('var ') ||
@@ -1112,7 +1117,7 @@ function detectLanguage(code) {
     
     // Java detection
     if (trimmedCode.includes('public class') || trimmedCode.includes('public static void main') ||
-        trimmedCode.includes('System.out.println')) {
+        trimmedCode.includes('system.out.println')) {
         return 'java';
     }
     
@@ -1131,11 +1136,6 @@ function detectLanguage(code) {
         } catch (e) {
             // Not valid JSON
         }
-    }
-    
-    // SQL detection
-    if (trimmedCode.match(/\b(select|insert|update|delete|create|alter|drop)\b/i)) {
-        return 'sql';
     }
     
     // Default to plain text
