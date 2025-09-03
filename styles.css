@@ -1812,6 +1812,187 @@ textarea:focus-visible {
     font-size: 13px;
 }
 
+/* Enhanced Code Block Styles */
+.code-container {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.code-container:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.code-language {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.code-language i {
+    font-size: 16px;
+    color: var(--accent-primary);
+}
+
+.code-copy-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.code-copy-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.code-copy-btn.copied {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.code-copy-btn i {
+    font-size: 12px;
+}
+
+.code-content {
+    padding: 0;
+}
+
+.code-content pre {
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 20px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.5;
+    font-family: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+}
+
+.code-content code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+/* Language-specific color coding for icons */
+.code-language .fa-html5 { color: #e34c26; }
+.code-language .fa-css3-alt { color: #1572b6; }
+.code-language .fa-js-square { color: #f7df1e; }
+.code-language .fa-python { color: #3776ab; }
+.code-language .fa-java { color: #ed8b00; }
+.code-language .fa-database { color: #336791; }
+.code-language .fa-terminal { color: #4eaa25; }
+.code-language .fa-php { color: #777bb4; }
+.code-language .fa-gem { color: #cc342d; }
+.code-language .fa-swift { color: #fa7343; }
+
+/* Pro theme enhancements for code blocks */
+[data-theme="pro"] .code-container {
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+}
+
+[data-theme="pro"] .code-container:hover {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+[data-theme="pro"] .code-header {
+    background: rgba(255, 215, 0, 0.05);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+[data-theme="pro"] .code-copy-btn {
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+[data-theme="pro"] .code-copy-btn:hover {
+    background: var(--gradient-primary);
+    border-color: var(--accent-primary);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .code-container {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .code-container:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile responsiveness for code blocks */
+@media (max-width: 768px) {
+    .code-header {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .code-copy-btn {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+    
+    .code-copy-btn .copy-text {
+        display: none;
+    }
+    
+    .code-content pre {
+        padding: 16px 12px;
+        font-size: 13px;
+    }
+}
+
+/* Animation for code block appearance */
+@keyframes codeBlockSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.code-container {
+    animation: codeBlockSlide 0.3s ease-out;
+}
+
 /* Image Preview Styles */
 .image-preview-container {
     margin-bottom: 16px;
