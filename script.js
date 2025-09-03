@@ -1038,12 +1038,177 @@ function renderMessage(message) {
 
 function formatMessage(content) {
     return content
+        // First handle code blocks (before converting newlines)
+        .replace(/```(\w*)\n?([\s\S]*?)```/g, (match, language, code) => {
+            return createCodeBlock(code.trim(), language);
+        })
+        // Then handle other markdown
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
         .replace(/\n/g, '<br>')
         .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function createCodeBlock(code, language = '') {
+    // Detect language if not specified
+    if (!language) {
+        language = detectLanguage(code);
+    }
+    
+    // Generate unique ID for the code block
+    const blockId = 'code-' + Math.random().toString(36).substr(2, 9);
+    
+    // Get language display name and icon
+    const langInfo = getLanguageInfo(language.toLowerCase());
+    
+    return `
+        <div class="code-container">
+            <div class="code-header">
+                <div class="code-language">
+                    <i class="${langInfo.icon}"></i>
+                    <span>${langInfo.name}</span>
+                </div>
+                <button class="code-copy-btn" onclick="copyCodeBlock('${blockId}')" title="Copy code">
+                    <i class="fas fa-copy"></i>
+                    <span class="copy-text">Copy</span>
+                </button>
+            </div>
+            <div class="code-content">
+                <pre><code id="${blockId}" class="language-${language}">${escapeHtml(code)}</code></pre>
+            </div>
+        </div>
+    `;
+}
+
+function detectLanguage(code) {
+    const trimmedCode = code.trim().toLowerCase();
+    
+    // HTML detection
+    if (trimmedCode.includes('<!doctype') || trimmedCode.includes('<html') || 
+        trimmedCode.match(/<\/?(div|span|p|h\d|body|head)\b/)) {
+        return 'html';
+    }
+    
+    // CSS detection
+    if (trimmedCode.includes('{') && trimmedCode.includes('}') && 
+        (trimmedCode.includes(':') && trimmedCode.includes(';'))) {
+        return 'css';
+    }
+    
+    // SQL detection (check first for more specific patterns)
+    if (trimmedCode.match(/\b(select|insert|update|delete|create|alter|drop|from|where|join|group\s+by|order\s+by)\b/i)) {
+        return 'sql';
+    }
+    
+    // JavaScript detection
+    if (trimmedCode.includes('function') || trimmedCode.includes('const ') || 
+        trimmedCode.includes('let ') || trimmedCode.includes('var ') ||
+        trimmedCode.includes('=>') || trimmedCode.includes('console.log')) {
+        return 'javascript';
+    }
+    
+    // Python detection
+    if (trimmedCode.includes('def ') || trimmedCode.includes('import ') ||
+        trimmedCode.includes('from ') || trimmedCode.includes('print(') ||
+        trimmedCode.match(/^\s*(if|for|while|class|try|except)[\s:]/m)) {
+        return 'python';
+    }
+    
+    // Java detection
+    if (trimmedCode.includes('public class') || trimmedCode.includes('public static void main') ||
+        trimmedCode.includes('system.out.println')) {
+        return 'java';
+    }
+    
+    // C/C++ detection
+    if (trimmedCode.includes('#include') || trimmedCode.includes('int main') ||
+        trimmedCode.includes('printf(') || trimmedCode.includes('cout <<')) {
+        return 'cpp';
+    }
+    
+    // JSON detection
+    if ((trimmedCode.startsWith('{') && trimmedCode.endsWith('}')) ||
+        (trimmedCode.startsWith('[') && trimmedCode.endsWith(']'))) {
+        try {
+            JSON.parse(code.trim());
+            return 'json';
+        } catch (e) {
+            // Not valid JSON
+        }
+    }
+    
+    // Default to plain text
+    return 'text';
+}
+
+function getLanguageInfo(language) {
+    const langMap = {
+        'html': { name: 'HTML', icon: 'fab fa-html5', color: '#e34c26' },
+        'css': { name: 'CSS', icon: 'fab fa-css3-alt', color: '#1572b6' },
+        'javascript': { name: 'JavaScript', icon: 'fab fa-js-square', color: '#f7df1e' },
+        'js': { name: 'JavaScript', icon: 'fab fa-js-square', color: '#f7df1e' },
+        'python': { name: 'Python', icon: 'fab fa-python', color: '#3776ab' },
+        'py': { name: 'Python', icon: 'fab fa-python', color: '#3776ab' },
+        'java': { name: 'Java', icon: 'fab fa-java', color: '#ed8b00' },
+        'cpp': { name: 'C++', icon: 'fas fa-code', color: '#00599c' },
+        'c': { name: 'C', icon: 'fas fa-code', color: '#a8b9cc' },
+        'json': { name: 'JSON', icon: 'fas fa-brackets-curly', color: '#000000' },
+        'sql': { name: 'SQL', icon: 'fas fa-database', color: '#336791' },
+        'bash': { name: 'Bash', icon: 'fas fa-terminal', color: '#4eaa25' },
+        'sh': { name: 'Shell', icon: 'fas fa-terminal', color: '#4eaa25' },
+        'php': { name: 'PHP', icon: 'fab fa-php', color: '#777bb4' },
+        'ruby': { name: 'Ruby', icon: 'fas fa-gem', color: '#cc342d' },
+        'go': { name: 'Go', icon: 'fas fa-code', color: '#00add8' },
+        'rust': { name: 'Rust', icon: 'fas fa-code', color: '#ce422b' },
+        'swift': { name: 'Swift', icon: 'fab fa-swift', color: '#fa7343' },
+        'kotlin': { name: 'Kotlin', icon: 'fas fa-code', color: '#7f52ff' },
+        'typescript': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
+        'ts': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
+        'text': { name: 'Text', icon: 'fas fa-file-alt', color: '#6c757d' }
+    };
+    
+    return langMap[language] || langMap['text'];
+}
+
+function copyCodeBlock(blockId) {
+    const codeElement = document.getElementById(blockId);
+    if (!codeElement) return;
+    
+    const code = codeElement.textContent;
+    
+    navigator.clipboard.writeText(code).then(() => {
+        // Find the copy button and show success state
+        const copyBtn = document.querySelector(`button[onclick="copyCodeBlock('${blockId}')"]`);
+        if (copyBtn) {
+            const originalText = copyBtn.querySelector('.copy-text').textContent;
+            const icon = copyBtn.querySelector('i');
+            
+            // Update button to show success
+            icon.className = 'fas fa-check';
+            copyBtn.querySelector('.copy-text').textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                icon.className = 'fas fa-copy';
+                copyBtn.querySelector('.copy-text').textContent = originalText;
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        }
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        showToast('Code copied to clipboard!', 'success');
+    });
 }
 
 function copyMessage(encodedContent) {
@@ -1319,6 +1484,7 @@ window.deleteChat = deleteChat;
 window.copyMessage = copyMessage;
 window.regenerateMessage = regenerateMessage;
 window.removeImagePreview = removeImagePreview;
+window.copyCodeBlock = copyCodeBlock;
 
 // Admin debugging function (accessible from browser console)
 window.checkAdminAccount = function() {
