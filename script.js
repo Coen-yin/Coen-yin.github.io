@@ -78,22 +78,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize admin system
 function initializeAdmin() {
-    // Create admin account if it doesn't exist
-    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-    const adminEmail = 'coenyin9@gmail.com';
-    
-    if (!users[adminEmail]) {
-        const hashedPassword = hashPassword('Carronshore93');
-        users[adminEmail] = {
-            name: 'Coen Admin',
-            email: adminEmail,
-            password: hashedPassword,
-            createdAt: new Date().toISOString(),
-            isPro: true,
-            isAdmin: true,
-            profilePhoto: null
-        };
-        localStorage.setItem('talkie-users', JSON.stringify(users));
+    try {
+        // Create admin account if it doesn't exist
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const adminEmail = 'coenyin9@gmail.com';
+        
+        // Always ensure admin account exists with correct properties
+        if (!users[adminEmail]) {
+            const hashedPassword = hashPassword('Carronshore93');
+            users[adminEmail] = {
+                name: 'Coen Admin',
+                email: adminEmail,
+                password: hashedPassword,
+                createdAt: new Date().toISOString(),
+                isPro: true,
+                isAdmin: true,
+                profilePhoto: null
+            };
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+            console.log('Admin account created successfully');
+        } else {
+            // Ensure existing admin account has all required properties
+            if (!users[adminEmail].isAdmin) {
+                users[adminEmail].isAdmin = true;
+                users[adminEmail].isPro = true;
+                localStorage.setItem('talkie-users', JSON.stringify(users));
+                console.log('Admin account permissions updated');
+            }
+        }
+    } catch (error) {
+        console.error('Error initializing admin account:', error);
+        // Force create admin account as fallback
+        try {
+            const adminEmail = 'coenyin9@gmail.com';
+            const hashedPassword = hashPassword('Carronshore93');
+            const users = {
+                [adminEmail]: {
+                    name: 'Coen Admin',
+                    email: adminEmail,
+                    password: hashedPassword,
+                    createdAt: new Date().toISOString(),
+                    isPro: true,
+                    isAdmin: true,
+                    profilePhoto: null
+                }
+            };
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+            console.log('Admin account force-created as fallback');
+        } catch (fallbackError) {
+            console.error('Failed to create admin account fallback:', fallbackError);
+        }
     }
 }
 
@@ -396,41 +430,49 @@ function handleLogin(event) {
         return;
     }
     
-    // Check credentials
-    const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-    const user = existingUsers[email];
-    
-    if (!user) {
-        showToast('No account found with this email', 'error');
-        return;
+    try {
+        // Check credentials
+        const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const user = existingUsers[email];
+        
+        if (!user) {
+            // For debugging: log available users (remove in production)
+            console.log('Available users:', Object.keys(existingUsers));
+            showToast('No account found with this email. Please check your email address or create a new account.', 'error');
+            return;
+        }
+        
+        const hashedPassword = hashPassword(password);
+        if (user.password !== hashedPassword) {
+            showToast('Incorrect password. Please try again.', 'error');
+            return;
+        }
+        
+        // Log in the user
+        currentUser = { 
+            name: user.name, 
+            email: user.email, 
+            isPro: user.isPro || false,
+            isAdmin: user.isAdmin || false,
+            profilePhoto: user.profilePhoto || null
+        };
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Check for pending pro upgrade
+        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+            sessionStorage.removeItem('pendingProUpgrade');
+            upgradeToPro();
+        }
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme(); // Refresh theme options for potential Pro user
+        showToast(`Welcome back, ${user.name}!`, 'success');
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('An error occurred during login. Please refresh the page and try again.', 'error');
     }
-    
-    const hashedPassword = hashPassword(password);
-    if (user.password !== hashedPassword) {
-        showToast('Incorrect password', 'error');
-        return;
-    }
-    
-    // Log in the user
-    currentUser = { 
-        name: user.name, 
-        email: user.email, 
-        isPro: user.isPro || false,
-        isAdmin: user.isAdmin || false,
-        profilePhoto: user.profilePhoto || null
-    };
-    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-    
-    // Check for pending pro upgrade
-    if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-        sessionStorage.removeItem('pendingProUpgrade');
-        upgradeToPro();
-    }
-    
-    hideAuthModal();
-    updateUserInterface();
-    initializeTheme(); // Refresh theme options for potential Pro user
-    showToast(`Welcome back, ${user.name}!`, 'success');
 }
 
 function handleLogout() {
@@ -1277,6 +1319,51 @@ window.deleteChat = deleteChat;
 window.copyMessage = copyMessage;
 window.regenerateMessage = regenerateMessage;
 window.removeImagePreview = removeImagePreview;
+
+// Admin debugging function (accessible from browser console)
+window.checkAdminAccount = function() {
+    try {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const adminEmail = 'coenyin9@gmail.com';
+        const adminExists = !!users[adminEmail];
+        
+        console.log('=== ADMIN ACCOUNT STATUS ===');
+        console.log('Admin account exists:', adminExists);
+        
+        if (adminExists) {
+            const admin = users[adminEmail];
+            console.log('Admin details:', {
+                name: admin.name,
+                email: admin.email,
+                isAdmin: admin.isAdmin,
+                isPro: admin.isPro,
+                hasPassword: !!admin.password,
+                createdAt: admin.createdAt
+            });
+        } else {
+            console.log('Admin account not found. Attempting to create...');
+            initializeAdmin();
+            const updatedUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+            console.log('Admin account created:', !!updatedUsers[adminEmail]);
+        }
+        
+        console.log('Current user logged in:', !!currentUser);
+        if (currentUser) {
+            console.log('Current user details:', {
+                name: currentUser.name,
+                email: currentUser.email,
+                isAdmin: currentUser.isAdmin,
+                isPro: currentUser.isPro
+            });
+        }
+        console.log('========================');
+        
+        return adminExists;
+    } catch (error) {
+        console.error('Error checking admin account:', error);
+        return false;
+    }
+};
 
 // Performance optimization - silent cleanup
 setTimeout(() => {
