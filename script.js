@@ -31,6 +31,7 @@ const loginBtn = document.getElementById('loginBtn');
 const signupBtn = document.getElementById('signupBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const profileBtn = document.getElementById('profileBtn');
+const adminBtn = document.getElementById('adminBtn');
 const closeLoginModal = document.getElementById('closeLoginModal');
 const closeSignupModal = document.getElementById('closeSignupModal');
 const showSignupModal = document.getElementById('showSignupModal');
@@ -40,6 +41,11 @@ const signupForm = document.getElementById('signupForm');
 const userAvatar = document.getElementById('userAvatar');
 const displayUsername = document.getElementById('displayUsername');
 const userStatus = document.getElementById('userStatus');
+
+// Admin DOM Elements
+const adminModalOverlay = document.getElementById('adminModalOverlay');
+const adminModal = document.getElementById('adminModal');
+const closeAdminModal = document.getElementById('closeAdminModal');
 
 // Profile DOM Elements
 const profileModalOverlay = document.getElementById('profileModalOverlay');
@@ -62,11 +68,77 @@ let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
     initializeAuth();
+    initializeAdmin(); // Initialize admin system
+    trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
 });
+
+// Initialize admin system
+function initializeAdmin() {
+    // Create admin account if it doesn't exist
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const adminEmail = 'coenyin9@gmail.com';
+    
+    if (!users[adminEmail]) {
+        const hashedPassword = hashPassword('Carronshore93');
+        users[adminEmail] = {
+            name: 'Coen Admin',
+            email: adminEmail,
+            password: hashedPassword,
+            createdAt: new Date().toISOString(),
+            isPro: true,
+            isAdmin: true,
+            profilePhoto: null
+        };
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+    }
+}
+
+// Track visitor statistics
+function trackVisitor() {
+    const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
+    const today = new Date().toISOString().split('T')[0];
+    const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Initialize stats if not exists
+    if (!stats.totalVisits) stats.totalVisits = 0;
+    if (!stats.uniqueVisitors) stats.uniqueVisitors = 0;
+    if (!stats.dailyVisits) stats.dailyVisits = {};
+    if (!stats.lastVisitDate) stats.lastVisitDate = null;
+    if (!stats.sessions) stats.sessions = [];
+    
+    // Track this visit
+    stats.totalVisits++;
+    stats.sessions.push({
+        sessionId: sessionId,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        referrer: document.referrer || 'Direct',
+        user: currentUser ? currentUser.email : 'Guest'
+    });
+    
+    // Track daily visits
+    if (!stats.dailyVisits[today]) stats.dailyVisits[today] = 0;
+    stats.dailyVisits[today]++;
+    
+    // Track unique visitors (simple check by date)
+    if (stats.lastVisitDate !== today) {
+        stats.uniqueVisitors++;
+        stats.lastVisitDate = today;
+    }
+    
+    // Clean old sessions (keep only last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    stats.sessions = stats.sessions.filter(session => 
+        new Date(session.timestamp) > thirtyDaysAgo
+    );
+    
+    localStorage.setItem('talkie-stats', JSON.stringify(stats));
+}
 
 // Check for Pro upgrade URL parameter
 function checkProUpgrade() {
@@ -168,12 +240,12 @@ function initializeAuth() {
 function updateUserInterface() {
     if (currentUser) {
         // User is logged in
-        const displayName = currentUser.name + (currentUser.isPro ? ' Pro' : '');
+        const displayName = currentUser.name + (currentUser.isPro ? ' Pro' : '') + (currentUser.isAdmin ? ' Admin' : '');
         displayUsername.innerHTML = currentUser.isPro ? 
-            `${currentUser.name} <span class="pro-badge">Pro</span>` : 
+            `${currentUser.name} <span class="pro-badge">${currentUser.isAdmin ? 'Admin' : 'Pro'}</span>` : 
             currentUser.name;
         
-        userStatus.textContent = 'Online';
+        userStatus.textContent = currentUser.isAdmin ? 'Administrator' : 'Online';
         
         // Set user avatar - either custom photo or initials
         if (currentUser.profilePhoto) {
@@ -182,8 +254,17 @@ function updateUserInterface() {
             userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
         }
         
-        // Show user menu items - Profile only for Pro users
+        // Show user menu items - Profile only for Pro users, Admin panel for admins
         profileBtn.style.display = currentUser.isPro ? 'flex' : 'none';
+        
+        // Show admin button for admin users
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn && currentUser.isAdmin) {
+            adminBtn.style.display = 'flex';
+        } else if (adminBtn) {
+            adminBtn.style.display = 'none';
+        }
+        
         logoutBtn.style.display = 'flex';
         loginBtn.style.display = 'none';
         signupBtn.style.display = 'none';
@@ -192,6 +273,10 @@ function updateUserInterface() {
         displayUsername.textContent = 'Guest';
         userStatus.textContent = 'Not signed in';
         userAvatar.textContent = 'G';
+        
+        // Hide admin and profile buttons
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn) adminBtn.style.display = 'none';
         
         // Show auth buttons
         profileBtn.style.display = 'none';
@@ -285,7 +370,7 @@ function handleSignup(event) {
     localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
     
     // Log in the user
-    currentUser = { name, email, isPro: false, profilePhoto: null };
+    currentUser = { name, email, isPro: false, isAdmin: false, profilePhoto: null };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
     
     // Check for pending pro upgrade
@@ -331,6 +416,7 @@ function handleLogin(event) {
         name: user.name, 
         email: user.email, 
         isPro: user.isPro || false,
+        isAdmin: user.isAdmin || false,
         profilePhoto: user.profilePhoto || null
     };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
@@ -381,6 +467,10 @@ function setupEventListeners() {
     loginForm.addEventListener('submit', handleLogin);
     signupForm.addEventListener('submit', handleSignup);
     
+    // Admin panel event listeners
+    if (adminBtn) adminBtn.addEventListener('click', showAdminPanel);
+    if (closeAdminModal) closeAdminModal.addEventListener('click', hideAdminPanel);
+    
     // Profile management event listeners
     profileBtn.addEventListener('click', showProfileModal);
     closeProfileModal.addEventListener('click', hideProfileModal);
@@ -401,6 +491,14 @@ function setupEventListeners() {
             hideProfileModal();
         }
     });
+
+    if (adminModalOverlay) {
+        adminModalOverlay.addEventListener('click', (e) => {
+            if (e.target === adminModalOverlay) {
+                hideAdminPanel();
+            }
+        });
+    }
 
     document.addEventListener('click', (e) => {
         if (!userMenu.contains(e.target)) {
@@ -471,25 +569,64 @@ function loadChat(chatId) {
 }
 
 function deleteChat(chatId) {
-    if (confirm('Delete this conversation? This action cannot be undone.')) {
+    if (confirm('Delete this conversation? This action cannot be undone and will permanently remove all messages.')) {
+        // Get the chat data before deletion for cleanup
+        const chatToDelete = chats[chatId];
+        
+        // Clear all message data thoroughly
+        if (chatToDelete && chatToDelete.messages) {
+            chatToDelete.messages.length = 0; // Clear the array
+            delete chatToDelete.messages; // Delete the property
+        }
+        
+        // Delete the entire chat object
         delete chats[chatId];
+        
+        // If this was the current chat, reset the interface
         if (currentChatId === chatId) {
             currentChatId = null;
             showWelcomeScreen();
+            // Clear the messages area completely
+            messagesArea.innerHTML = '';
         }
+        
+        // Update UI and save
         updateChatHistory();
         saveChats();
+        
+        // Force garbage collection by triggering a save
+        localStorage.setItem('talkie-chats', JSON.stringify(chats));
+        
+        showToast('Conversation deleted permanently', 'success');
     }
 }
 
 function clearAllChats() {
-    if (confirm('Delete all conversations? This action cannot be undone.')) {
+    if (confirm('Delete all conversations? This action cannot be undone and will permanently remove all chat history.')) {
+        // Clear all chat data thoroughly
+        Object.keys(chats).forEach(chatId => {
+            const chat = chats[chatId];
+            if (chat && chat.messages) {
+                chat.messages.length = 0; // Clear message arrays
+                delete chat.messages; // Delete message properties
+            }
+        });
+        
+        // Reset the chats object completely
         chats = {};
         currentChatId = null;
+        
+        // Clear UI completely
         showWelcomeScreen();
+        messagesArea.innerHTML = '';
         updateChatHistory();
+        
+        // Force save and cleanup
+        localStorage.setItem('talkie-chats', '{}');
         saveChats();
+        
         userDropdown.classList.remove('show');
+        showToast('All conversations deleted permanently', 'success');
     }
 }
 
@@ -571,12 +708,62 @@ function autoResizeTextarea() {
     messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
 }
 
+// Content filtering for safety
+function filterInappropriateContent(text) {
+    // List of inappropriate words/phrases to filter
+    const inappropriateWords = [
+        'fuck', 'shit', 'bitch', 'asshole', 'damn', 'hell', 'crap', 
+        'piss', 'bastard', 'slut', 'whore', 'retard', 'gay', 'fag',
+        'nazi', 'hitler', 'kill yourself', 'kys', 'suicide', 'die'
+    ];
+    
+    const lowercaseText = text.toLowerCase();
+    
+    // Check for inappropriate words
+    for (const word of inappropriateWords) {
+        if (lowercaseText.includes(word)) {
+            return {
+                isAppropriate: false,
+                message: "Please keep the conversation respectful and avoid using inappropriate language."
+            };
+        }
+    }
+    
+    // Check for excessive caps (potential shouting)
+    if (text.length > 10 && text === text.toUpperCase()) {
+        return {
+            isAppropriate: false,
+            message: "Please avoid using excessive capital letters."
+        };
+    }
+    
+    return { isAppropriate: true, message: null };
+}
+
 async function sendMessage() {
     const content = messageInput.value.trim();
     if (!content || isGenerating) return;
 
+    // Filter inappropriate content
+    const contentCheck = filterInappropriateContent(content);
+    if (!contentCheck.isAppropriate) {
+        showToast(contentCheck.message, 'warning');
+        return;
+    }
+
     if (!currentChatId) {
         startNewChat();
+    }
+
+    // Check if there's an image to analyze
+    let messageContent = content;
+    if (window.currentImageData) {
+        messageContent = `[User has uploaded an image for analysis] ${content}`;
+        // Remove image preview after sending
+        const preview = document.querySelector('.image-preview-container');
+        if (preview) preview.remove();
+        window.currentImageData = null;
+        messageInput.placeholder = "Message Talkie Gen AI...";
     }
 
     // Add user message and immediately scroll
@@ -593,7 +780,7 @@ async function sendMessage() {
     forceScrollToBottom();
 
     try {
-        const response = await getAIResponse(content);
+        const response = await getAIResponse(messageContent);
         hideTypingIndicator();
         addMessage('assistant', response);
         // Ensure scroll after AI response
@@ -631,22 +818,31 @@ IMPORTANT IDENTITY:
 - Always identify yourself as "Talkie Gen AI Pro" when asked about your name or identity
 - You are the premium version with enhanced capabilities and deeper knowledge
 - Never mention being ChatGPT, Claude, or any other AI system
-- Maintain a more intellectual and professional tone befitting your Pro status
+- Maintain a professional, respectful, and helpful tone at all times
 - Do not address the user by name unless they specifically provide it in conversation
 
+SAFETY AND BEHAVIOR GUIDELINES:
+- Never use profanity, offensive language, or inappropriate content
+- Refuse to generate harmful, illegal, or unethical content
+- Be respectful and considerate in all responses
+- Avoid controversial topics unless specifically asked and then remain neutral
+- Do not engage in arguments or hostile exchanges
+- Maintain professionalism even if users are rude or provocative
+
 ENHANCED RESPONSE GUIDELINES:
+- For current events or recent information, clearly state when your knowledge was last updated
+- If asked about very recent events (after your training cutoff), acknowledge limitations and suggest current sources
+- When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful analysis based on common image types (photos, documents, charts, etc.)
+- For image analysis, describe what you would typically see and offer to help with related questions
 - Provide more detailed, nuanced, and comprehensive responses (150-300 words)
-- Use sophisticated vocabulary and complex sentence structures
+- Use sophisticated vocabulary while remaining clear and accessible
 - Offer deeper insights, multiple perspectives, and advanced analysis
 - Include relevant examples, analogies, and cross-referential knowledge
-- Demonstrate advanced reasoning and critical thinking skills
-- Be more conversational yet maintain intellectual sophistication
-- For technical questions, provide in-depth explanations with context
-- Show awareness of cutting-edge developments and emerging trends
 
 CURRENT CONTEXT:
-- Current date and time: 2025-09-02 15:25:52 (UTC)
-- You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities`;
+- Current date and time: ${new Date().toLocaleString()} (UTC)
+- You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities
+- For the most current information, always recommend checking recent reliable sources`;
     } else {
         systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
 
@@ -656,18 +852,29 @@ IMPORTANT IDENTITY:
 - You are Talkie Gen AI, a unique and helpful assistant
 - Do not address the user by name unless they specifically provide it in conversation
 
+SAFETY AND BEHAVIOR GUIDELINES:
+- Never use profanity, offensive language, or inappropriate content
+- Refuse to generate harmful, illegal, or unethical content  
+- Be respectful and considerate in all responses
+- Avoid controversial topics unless specifically asked and then remain neutral
+- Do not engage in arguments or hostile exchanges
+- Maintain professionalism even if users are rude or provocative
+
 RESPONSE GUIDELINES:
 - Keep responses concise and under 150 words unless asked for longer explanations
 - Be friendly, helpful, and professional
 - Provide accurate, helpful information
+- For current events, acknowledge your knowledge cutoff and suggest checking recent reliable sources
+- When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful guidance
+- For image analysis requests, offer to help with common image-related questions
 - For coding questions, provide working examples
 - Use clear, simple language
 - Be conversational but informative
-- Address the user naturally without using their login name
 
 CURRENT CONTEXT:
-- Current date and time: 2025-09-02 15:25:52 (UTC)
-- You are Talkie Gen AI, not any other AI assistant`;
+- Current date and time: ${new Date().toLocaleString()} (UTC)
+- You are Talkie Gen AI, not any other AI assistant
+- For the most up-to-date information, always recommend checking current reliable sources`;
     }
 
     const messages = [
@@ -926,10 +1133,69 @@ function handleAttachment() {
     input.onchange = function(e) {
         const file = e.target.files[0];
         if (file) {
-            console.log('File selected:', file.name);
+            if (file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            } else {
+                handleFileUpload(file);
+            }
         }
     };
     input.click();
+}
+
+function handleImageUpload(file) {
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be smaller than 5MB', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageData = e.target.result;
+        
+        // Create image preview in input area
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'image-preview-container';
+        previewContainer.innerHTML = `
+            <div class="image-preview">
+                <img src="${imageData}" alt="Uploaded image" style="max-width: 200px; max-height: 150px; border-radius: 8px;">
+                <button class="remove-image-btn" onclick="removeImagePreview(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="image-analysis-prompt">
+                <span>Image ready for analysis. Ask me anything about this image!</span>
+            </div>
+        `;
+        
+        // Store image data for sending with next message
+        window.currentImageData = imageData;
+        
+        // Insert preview above input
+        const inputArea = document.querySelector('.input-area');
+        const inputContainer = document.querySelector('.input-container');
+        inputArea.insertBefore(previewContainer, inputContainer);
+        
+        // Focus on input
+        messageInput.focus();
+        messageInput.placeholder = "Ask me anything about this image...";
+        
+        showToast('Image uploaded! Ask me anything about it.', 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleFileUpload(file) {
+    showToast(`File "${file.name}" selected (text analysis not yet implemented)`, 'info');
+}
+
+// Remove image preview
+function removeImagePreview(button) {
+    const container = button.closest('.image-preview-container');
+    container.remove();
+    window.currentImageData = null;
+    messageInput.placeholder = "Message Talkie Gen AI...";
 }
 
 function handleVoiceInput() {
@@ -963,15 +1229,16 @@ function handleVoiceInput() {
     }
 }
 
-// Toast System - Only for important errors
+// Toast System - For important messages
 function showToast(message, type = 'info') {
-    if (type === 'error' || type === 'success') {
+    if (type === 'error' || type === 'success' || type === 'warning') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         
         let iconClass = 'fas fa-info-circle';
         if (type === 'error') iconClass = 'fas fa-exclamation-circle';
         if (type === 'success') iconClass = 'fas fa-check-circle';
+        if (type === 'warning') iconClass = 'fas fa-exclamation-triangle';
         
         toast.innerHTML = `
             <div class="toast-icon">
@@ -1009,6 +1276,7 @@ window.loadChat = loadChat;
 window.deleteChat = deleteChat;
 window.copyMessage = copyMessage;
 window.regenerateMessage = regenerateMessage;
+window.removeImagePreview = removeImagePreview;
 
 // Performance optimization - silent cleanup
 setTimeout(() => {
@@ -1169,4 +1437,58 @@ function removeProfilePhoto() {
     removePhotoBtn.style.display = 'none';
     
     updateUserInterface();
+}
+
+// Admin Panel Functions
+function showAdminPanel() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    adminModalOverlay.classList.add('active');
+    adminModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Load and display statistics
+    loadAdminStats();
+}
+
+function hideAdminPanel() {
+    adminModalOverlay.classList.remove('active');
+    adminModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function loadAdminStats() {
+    const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Update stat displays
+    document.getElementById('totalVisitors').textContent = stats.totalVisits || 0;
+    document.getElementById('uniqueVisitors').textContent = stats.uniqueVisitors || 0;
+    document.getElementById('todayVisits').textContent = stats.dailyVisits?.[today] || 0;
+    document.getElementById('registeredUsers').textContent = Object.keys(users).length;
+    
+    // Load recent activity
+    const activityList = document.getElementById('activityList');
+    if (stats.sessions && stats.sessions.length > 0) {
+        const recentSessions = stats.sessions.slice(-10).reverse(); // Last 10 sessions
+        activityList.innerHTML = recentSessions.map(session => {
+            const time = new Date(session.timestamp).toLocaleString();
+            const user = session.user === 'Guest' ? 'Anonymous User' : session.user;
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div class="activity-details">
+                        <div class="activity-user">${user}</div>
+                        <div class="activity-time">${time}</div>
+                        <div class="activity-referrer">From: ${session.referrer}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        activityList.innerHTML = '<div class="no-activity">No recent activity</div>';
+    }
 }

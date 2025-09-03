@@ -64,6 +64,10 @@
                         <i class="fas fa-user"></i>
                         <span>Profile</span>
                     </button>
+                    <button class="dropdown-item" id="adminBtn" style="display: none;">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Admin Panel</span>
+                    </button>
                     <button class="dropdown-item" id="themeToggle">
                         <i class="fas fa-moon"></i>
                         <span>Dark mode</span>
@@ -244,6 +248,82 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Admin Panel Modal -->
+    <div class="modal-overlay" id="adminModalOverlay">
+        <div class="auth-modal" id="adminModal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>Admin Dashboard</h2>
+                <p>Website statistics and management</p>
+                <button class="modal-close" id="closeAdminModal">&times;</button>
+            </div>
+            <div class="admin-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="totalVisitors">0</div>
+                            <div class="stat-label">Total Visits</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="uniqueVisitors">0</div>
+                            <div class="stat-label">Unique Visitors</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="todayVisits">0</div>
+                            <div class="stat-label">Today's Visits</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-registered"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-number" id="registeredUsers">0</div>
+                            <div class="stat-label">Registered Users</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-section">
+                    <h3>Recent Activity</h3>
+                    <div class="activity-list" id="activityList">
+                        <!-- Recent activity will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="admin-section">
+                    <h3>System Information</h3>
+                    <div class="system-info">
+                        <div class="info-item">
+                            <span class="info-label">AI Model:</span>
+                            <span class="info-value">Groq OpenAI GPT</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data Storage:</span>
+                            <span class="info-value">Browser LocalStorage</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Theme System:</span>
+                            <span class="info-value">Light / Dark / Pro</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Profile Modal -->
     <div class="modal-overlay" id="profileModalOverlay">
