@@ -754,7 +754,7 @@ function autoResizeTextarea() {
 function filterInappropriateContent(text) {
     // List of inappropriate words/phrases to filter
     const inappropriateWords = [
-        'fuck', 'shit', 'bitch', 'asshole', 'damn', 'hell', 'crap', 
+        'fuck', 'shit', 'bitch', 'asshole', 'damn', 'Motherfucker', 'crap', 
         'piss', 'bastard', 'slut', 'whore', 'retard', 'gay', 'fag',
         'nazi', 'hitler', 'kill yourself', 'kys', 'suicide', 'die'
     ];
