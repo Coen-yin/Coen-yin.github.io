@@ -1,5 +1,5 @@
-// API Configuration - Updated with working API key
-const GROQ_API_KEY = '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';
+// API Configuration - API key injected during build from GitHub secrets
+const GROQ_API_KEY = '{{GROQ_API_KEY}}';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // DOM Elements
