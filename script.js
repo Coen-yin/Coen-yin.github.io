@@ -95,7 +95,10 @@ let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-
     enableMemory: true,
     enableFollowUps: true,
     personalityMode: 'friendly',
-    rememberPreferences: true
+    rememberPreferences: true,
+    enableWebSearch: true,
+    searchBehavior: 'auto',
+    showSearchResults: true
 }));
 let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation-summaries') || '{}');
 
@@ -557,6 +560,9 @@ function showSettingsModal() {
     document.getElementById('enableMemory').checked = conversationSettings.enableMemory !== false;
     document.getElementById('enableFollowUps').checked = conversationSettings.enableFollowUps !== false;
     document.getElementById('rememberPreferences').checked = conversationSettings.rememberPreferences !== false;
+    document.getElementById('enableWebSearch').checked = conversationSettings.enableWebSearch !== false;
+    document.getElementById('searchBehavior').value = conversationSettings.searchBehavior || 'auto';
+    document.getElementById('showSearchResults').checked = conversationSettings.showSearchResults !== false;
     
     // Update memory info
     updateMemoryInfo();
@@ -609,6 +615,9 @@ function saveSettings() {
     conversationSettings.enableMemory = document.getElementById('enableMemory').checked;
     conversationSettings.enableFollowUps = document.getElementById('enableFollowUps').checked;
     conversationSettings.rememberPreferences = document.getElementById('rememberPreferences').checked;
+    conversationSettings.enableWebSearch = document.getElementById('enableWebSearch').checked;
+    conversationSettings.searchBehavior = document.getElementById('searchBehavior').value;
+    conversationSettings.showSearchResults = document.getElementById('showSearchResults').checked;
     
     saveConversationSettings();
     hideSettingsModal();
@@ -623,7 +632,10 @@ function resetSettings() {
             enableMemory: true,
             enableFollowUps: true,
             personalityMode: 'friendly',
-            rememberPreferences: true
+            rememberPreferences: true,
+            enableWebSearch: true,
+            searchBehavior: 'auto',
+            showSearchResults: true
         };
         
         saveConversationSettings();
@@ -1130,6 +1142,15 @@ function setupEventListeners() {
     // Settings event listeners
     settingsBtn.addEventListener('click', showSettingsModal);
     closeSettingsModal.addEventListener('click', hideSettingsModal);
+    
+    // Export/Import event listeners
+    if (document.getElementById('exportConversationsBtn')) {
+        document.getElementById('exportConversationsBtn').addEventListener('click', exportConversations);
+        document.getElementById('exportSettingsBtn').addEventListener('click', exportSettings);
+        document.getElementById('exportAllDataBtn').addEventListener('click', exportAllData);
+        document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('importDataInput').click());
+        document.getElementById('importDataInput').addEventListener('change', importData);
+    }
 
     // Share event listeners
     shareBtn.addEventListener('click', showShareModal);
@@ -1614,20 +1635,33 @@ CURRENT CONTEXT:
     ];
 
     try {
+        // Prepare the request body
+        const requestBody = {
+            model: 'openai/gpt-oss-120b',
+            messages: messages,
+            temperature: 0.3,
+            max_tokens: 2048,
+            top_p: 1,
+            stream: false
+        };
+
+        // Add tools if web search is enabled
+        if (conversationSettings.enableWebSearch) {
+            requestBody.tool_choice = "auto";
+            requestBody.tools = [
+                {
+                    "type": "browser_search"
+                }
+            ];
+        }
+
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-               model: 'openai/gpt-oss-120b',
-                messages: messages,
-                temperature: 0.3,
-                max_tokens: 1500,
-                top_p: 0.9,
-                stream: false
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -2586,6 +2620,10 @@ function loadDocumentationContent() {
                     <i class="fas fa-star"></i>
                     <span>Features</span>
                 </div>
+                <div class="docs-nav-item" data-section="search-tools">
+                    <i class="fas fa-search"></i>
+                    <span>Search & Tools</span>
+                </div>
                 <div class="docs-nav-item" data-section="settings">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
@@ -2674,6 +2712,40 @@ function loadDocumentationContent() {
                         <li>Export conversations</li>
                         <li>Delete individual chats or clear all</li>
                     </ul>
+                </div>
+                
+                <div class="docs-section" id="search-tools">
+                    <h2>🔍 Search & Tools</h2>
+                    
+                    <h3>Web Search Integration</h3>
+                    <p>Talkie Gen AI can search the internet to provide you with the most current information:</p>
+                    <ul>
+                        <li><strong>Real-time Information:</strong> Get current news, events, and data</li>
+                        <li><strong>Fact Verification:</strong> Cross-reference information with multiple sources</li>
+                        <li><strong>Updated Knowledge:</strong> Access information beyond the AI's training cutoff</li>
+                        <li><strong>Source Attribution:</strong> See which websites provided the information</li>
+                    </ul>
+                    
+                    <h3>How Web Search Works</h3>
+                    <ol>
+                        <li>Ask questions about current events or recent information</li>
+                        <li>The AI automatically detects when web search is needed</li>
+                        <li>Searches are performed using reliable sources</li>
+                        <li>Results are integrated into the AI's response</li>
+                        <li>Sources are displayed (if enabled in settings)</li>
+                    </ol>
+                    
+                    <h3>Search Settings</h3>
+                    <ul>
+                        <li><strong>Enable Web Search:</strong> Turn search functionality on/off</li>
+                        <li><strong>Search Behavior:</strong> Control when searches are performed</li>
+                        <li><strong>Show Sources:</strong> Display or hide source attribution</li>
+                    </ul>
+                    
+                    <div class="docs-tip">
+                        <i class="fas fa-search"></i>
+                        <strong>Try asking:</strong> "What happened in AI technology this week?" or "Latest news about renewable energy"
+                    </div>
                 </div>
                 
                 <div class="docs-section" id="settings">
@@ -2856,4 +2928,137 @@ function handleDocumentationRouting() {
             window.history.replaceState({}, document.title, newUrl);
         }
     }
+}
+
+// Export/Import Functions
+function exportConversations() {
+    try {
+        const data = {
+            chats: chats,
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `talkie-gen-conversations-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('Conversations exported successfully!', 'success');
+    } catch (error) {
+        showToast('Failed to export conversations', 'error');
+        console.error('Export error:', error);
+    }
+}
+
+function exportSettings() {
+    try {
+        const data = {
+            conversationSettings: conversationSettings,
+            userMemory: currentUser ? userMemory[currentUser.email] : null,
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `talkie-gen-settings-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('Settings exported successfully!', 'success');
+    } catch (error) {
+        showToast('Failed to export settings', 'error');
+        console.error('Export error:', error);
+    }
+}
+
+function exportAllData() {
+    try {
+        const data = {
+            chats: chats,
+            conversationSettings: conversationSettings,
+            userMemory: currentUser ? userMemory[currentUser.email] : null,
+            conversationSummaries: conversationSummaries,
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `talkie-gen-all-data-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('All data exported successfully!', 'success');
+    } catch (error) {
+        showToast('Failed to export data', 'error');
+        console.error('Export error:', error);
+    }
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.chats) {
+                if (confirm('Import conversations? This will merge with existing conversations.')) {
+                    Object.assign(chats, data.chats);
+                    localStorage.setItem('talkie-chats', JSON.stringify(chats));
+                    loadChatHistory();
+                    showToast('Conversations imported successfully!', 'success');
+                }
+            }
+            
+            if (data.conversationSettings) {
+                if (confirm('Import settings? This will overwrite current settings.')) {
+                    conversationSettings = { ...conversationSettings, ...data.conversationSettings };
+                    saveConversationSettings();
+                    showToast('Settings imported successfully!', 'success');
+                }
+            }
+            
+            if (data.userMemory && currentUser) {
+                if (confirm('Import memory data? This will merge with existing memory.')) {
+                    if (!userMemory[currentUser.email]) {
+                        userMemory[currentUser.email] = {};
+                    }
+                    Object.assign(userMemory[currentUser.email], data.userMemory);
+                    localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
+                    showToast('Memory data imported successfully!', 'success');
+                }
+            }
+            
+            if (data.conversationSummaries) {
+                Object.assign(conversationSummaries, data.conversationSummaries);
+                localStorage.setItem('talkie-conversation-summaries', JSON.stringify(conversationSummaries));
+            }
+            
+        } catch (error) {
+            showToast('Invalid file format', 'error');
+            console.error('Import error:', error);
+        }
+    };
+    
+    reader.readAsText(file);
+    // Reset file input
+    event.target.value = '';
 }
