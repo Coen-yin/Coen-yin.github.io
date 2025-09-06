@@ -23,6 +23,17 @@ const toastContainer = document.getElementById('toastContainer');
 const attachBtn = document.getElementById('attachBtn');
 const voiceBtn = document.getElementById('voiceBtn');
 
+// Settings DOM Elements
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModalOverlay = document.getElementById('settingsModalOverlay');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettingsModal = document.getElementById('closeSettingsModal');
+
+// Memory DOM Elements
+const memoryModalOverlay = document.getElementById('memoryModalOverlay');
+const memoryModal = document.getElementById('memoryModal');
+const closeMemoryModal = document.getElementById('closeMemoryModal');
+
 // Authentication DOM Elements
 const authModalOverlay = document.getElementById('authModalOverlay');
 const loginModal = document.getElementById('loginModal');
@@ -64,6 +75,18 @@ let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
 let isGenerating = false;
 let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 
+// Enhanced Context and Memory State
+let userMemory = JSON.parse(localStorage.getItem('talkie-user-memory') || '{}');
+let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-settings') || JSON.stringify({
+    contextLength: 10,
+    responseStyle: 'balanced',
+    enableMemory: true,
+    enableFollowUps: true,
+    personalityMode: 'friendly',
+    rememberPreferences: true
+}));
+let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation-summaries') || '{}');
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
@@ -71,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeAdmin(); // Initialize admin system
     trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
+    initializeMemorySystem(); // Initialize enhanced memory system
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
@@ -127,6 +151,598 @@ function initializeAdmin() {
             console.log('Admin account force-created as fallback');
         } catch (fallbackError) {
             console.error('Failed to create admin account fallback:', fallbackError);
+        }
+    }
+}
+
+// Initialize Enhanced Memory System
+function initializeMemorySystem() {
+    try {
+        // Initialize user memory if it doesn't exist
+        if (currentUser && currentUser.email) {
+            if (!userMemory[currentUser.email]) {
+                userMemory[currentUser.email] = {
+                    preferences: {},
+                    topics: [],
+                    conversationHistory: [],
+                    lastActive: new Date().toISOString(),
+                    personalInfo: {},
+                    interests: [],
+                    conversationStyle: 'balanced'
+                };
+            } else {
+                // Update last active
+                userMemory[currentUser.email].lastActive = new Date().toISOString();
+            }
+            saveUserMemory();
+        }
+    } catch (error) {
+        console.error('Error initializing memory system:', error);
+    }
+}
+
+// Enhanced Context Management
+function getEnhancedContext(chatId) {
+    const chat = chats[chatId];
+    if (!chat || !chat.messages) return [];
+    
+    const contextLength = conversationSettings.contextLength || 10;
+    const recentMessages = chat.messages.slice(-contextLength);
+    
+    // Add conversation summary if available and conversation is long
+    let contextMessages = [];
+    
+    if (chat.messages.length > contextLength && conversationSummaries[chatId]) {
+        contextMessages.push({
+            role: 'system',
+            content: `Previous conversation summary: ${conversationSummaries[chatId]}`
+        });
+    }
+    
+    // Add user memory context if enabled
+    if (conversationSettings.enableMemory && currentUser && userMemory[currentUser.email]) {
+        const memory = userMemory[currentUser.email];
+        const memoryContext = buildMemoryContext(memory);
+        if (memoryContext) {
+            contextMessages.push({
+                role: 'system',
+                content: memoryContext
+            });
+        }
+    }
+    
+    // Add recent messages
+    contextMessages.push(...recentMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+    })));
+    
+    return contextMessages;
+}
+
+// Build Memory Context
+function buildMemoryContext(memory) {
+    let contextParts = [];
+    
+    if (memory.personalInfo && Object.keys(memory.personalInfo).length > 0) {
+        contextParts.push(`User's personal information: ${JSON.stringify(memory.personalInfo)}`);
+    }
+    
+    if (memory.preferences && Object.keys(memory.preferences).length > 0) {
+        contextParts.push(`User's preferences: ${JSON.stringify(memory.preferences)}`);
+    }
+    
+    if (memory.interests && memory.interests.length > 0) {
+        contextParts.push(`User's interests: ${memory.interests.join(', ')}`);
+    }
+    
+    if (memory.topics && memory.topics.length > 0) {
+        const recentTopics = memory.topics.slice(-5);
+        contextParts.push(`Recent conversation topics: ${recentTopics.join(', ')}`);
+    }
+    
+    return contextParts.length > 0 ? contextParts.join('\n') : null;
+}
+
+// Update User Memory
+function updateUserMemory(userMessage, aiResponse) {
+    if (!conversationSettings.enableMemory || !currentUser || !userMemory[currentUser.email]) {
+        return;
+    }
+    
+    const memory = userMemory[currentUser.email];
+    
+    // Extract potential personal information
+    extractPersonalInfo(userMessage, memory);
+    
+    // Extract interests and preferences
+    extractInterestsAndPreferences(userMessage, memory);
+    
+    // Extract conversation topics
+    extractTopics(userMessage, aiResponse, memory);
+    
+    // Update conversation history summary
+    updateConversationHistory(userMessage, aiResponse, memory);
+    
+    saveUserMemory();
+}
+
+// Extract Personal Information
+function extractPersonalInfo(message, memory) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name
+    const namePatterns = [
+        /my name is ([a-zA-Z\s]+)/i,
+        /i'm ([a-zA-Z\s]+)/i,
+        /call me ([a-zA-Z\s]+)/i
+    ];
+    
+    namePatterns.forEach(pattern => {
+        const match = message.match(pattern);
+        if (match) {
+            memory.personalInfo.name = match[1].trim();
+        }
+    });
+    
+    // Extract location
+    const locationPatterns = [
+        /i live in ([a-zA-Z\s,]+)/i,
+        /i'm from ([a-zA-Z\s,]+)/i,
+        /i'm in ([a-zA-Z\s,]+)/i
+    ];
+    
+    locationPatterns.forEach(pattern => {
+        const match = message.match(pattern);
+        if (match) {
+            memory.personalInfo.location = match[1].trim();
+        }
+    });
+    
+    // Extract profession
+    const professionPatterns = [
+        /i work as (?:a |an )?([a-zA-Z\s]+)/i,
+        /i'm (?:a |an )?([a-zA-Z\s]+) by profession/i,
+        /my job is ([a-zA-Z\s]+)/i
+    ];
+    
+    professionPatterns.forEach(pattern => {
+        const match = message.match(pattern);
+        if (match) {
+            memory.personalInfo.profession = match[1].trim();
+        }
+    });
+}
+
+// Extract Interests and Preferences
+function extractInterestsAndPreferences(message, memory) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Common interest keywords
+    const interestKeywords = [
+        'programming', 'coding', 'music', 'movies', 'books', 'travel', 'cooking',
+        'sports', 'gaming', 'art', 'photography', 'fitness', 'technology',
+        'science', 'history', 'politics', 'nature', 'animals', 'fashion'
+    ];
+    
+    interestKeywords.forEach(keyword => {
+        if (lowerMessage.includes(keyword) && !memory.interests.includes(keyword)) {
+            // Check if it's mentioned in a positive context
+            const positiveIndicators = ['love', 'like', 'enjoy', 'interested in', 'passionate about'];
+            const hasPositiveContext = positiveIndicators.some(indicator => 
+                lowerMessage.includes(indicator) && 
+                lowerMessage.indexOf(indicator) < lowerMessage.indexOf(keyword)
+            );
+            
+            if (hasPositiveContext) {
+                memory.interests.push(keyword);
+            }
+        }
+    });
+    
+    // Limit interests to prevent bloat
+    if (memory.interests.length > 20) {
+        memory.interests = memory.interests.slice(-20);
+    }
+}
+
+// Extract Topics
+function extractTopics(userMessage, aiResponse, memory) {
+    // Simple topic extraction based on key phrases and context
+    const topics = [];
+    
+    // Extract from user message
+    const userTopics = extractTopicsFromText(userMessage);
+    topics.push(...userTopics);
+    
+    // Extract from AI response
+    const aiTopics = extractTopicsFromText(aiResponse);
+    topics.push(...aiTopics);
+    
+    // Add unique topics to memory
+    topics.forEach(topic => {
+        if (!memory.topics.includes(topic)) {
+            memory.topics.push(topic);
+        }
+    });
+    
+    // Keep only recent topics (last 50)
+    if (memory.topics.length > 50) {
+        memory.topics = memory.topics.slice(-50);
+    }
+}
+
+// Extract Topics from Text
+function extractTopicsFromText(text) {
+    const topics = [];
+    const topicKeywords = [
+        'javascript', 'python', 'react', 'node', 'html', 'css', 'programming',
+        'machine learning', 'ai', 'blockchain', 'cryptocurrency', 'web development',
+        'mobile app', 'database', 'api', 'algorithm', 'data structure',
+        'travel', 'recipe', 'workout', 'health', 'business', 'marketing',
+        'design', 'writing', 'education', 'science', 'physics', 'chemistry',
+        'biology', 'math', 'history', 'literature', 'philosophy'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    topicKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) {
+            topics.push(keyword);
+        }
+    });
+    
+    return topics;
+}
+
+// Update Conversation History
+function updateConversationHistory(userMessage, aiResponse, memory) {
+    const entry = {
+        timestamp: new Date().toISOString(),
+        userMessage: userMessage.substring(0, 100), // Limit length
+        aiResponse: aiResponse.substring(0, 100),
+        chatId: currentChatId
+    };
+    
+    memory.conversationHistory.push(entry);
+    
+    // Keep only recent history (last 100 entries)
+    if (memory.conversationHistory.length > 100) {
+        memory.conversationHistory = memory.conversationHistory.slice(-100);
+    }
+}
+
+// Generate Follow-up Questions
+function generateFollowUpQuestions(aiResponse, context) {
+    if (!conversationSettings.enableFollowUps) return [];
+    
+    const followUps = [];
+    const lowerResponse = aiResponse.toLowerCase();
+    
+    // Topic-based follow-ups
+    if (lowerResponse.includes('programming') || lowerResponse.includes('code')) {
+        followUps.push("Would you like help with a specific programming language?");
+        followUps.push("Do you want to see some code examples?");
+    }
+    
+    if (lowerResponse.includes('recipe') || lowerResponse.includes('cooking')) {
+        followUps.push("Would you like the full recipe with ingredients?");
+        followUps.push("Do you have any dietary restrictions I should know about?");
+    }
+    
+    if (lowerResponse.includes('travel') || lowerResponse.includes('trip')) {
+        followUps.push("What's your budget for this trip?");
+        followUps.push("How long are you planning to stay?");
+    }
+    
+    if (lowerResponse.includes('learn') || lowerResponse.includes('study')) {
+        followUps.push("What's your current level of knowledge on this topic?");
+        followUps.push("Would you like me to recommend some resources?");
+    }
+    
+    // General follow-ups
+    if (aiResponse.length > 500) {
+        followUps.push("Would you like me to elaborate on any specific part?");
+    }
+    
+    if (lowerResponse.includes('?')) {
+        followUps.push("Is there anything else you'd like to know about this?");
+    }
+    
+    // Return max 3 follow-ups
+    return followUps.slice(0, 3);
+}
+
+// Display Follow-up Questions
+function displayFollowUpQuestions(followUps) {
+    if (!followUps || followUps.length === 0) return;
+    
+    const followUpContainer = document.createElement('div');
+    followUpContainer.className = 'follow-up-container';
+    followUpContainer.innerHTML = `
+        <div class="follow-up-header">
+            <i class="fas fa-lightbulb"></i>
+            <span>Continue the conversation:</span>
+        </div>
+        <div class="follow-up-questions">
+            ${followUps.map(question => `
+                <button class="follow-up-btn" onclick="sendFollowUpQuestion('${encodeURIComponent(question)}')">
+                    ${question}
+                </button>
+            `).join('')}
+        </div>
+    `;
+    
+    // Add to messages area
+    messagesArea.appendChild(followUpContainer);
+    
+    // Auto-remove after 30 seconds
+    setTimeout(() => {
+        if (followUpContainer.parentNode) {
+            followUpContainer.style.opacity = '0';
+            setTimeout(() => {
+                if (followUpContainer.parentNode) {
+                    followUpContainer.parentNode.removeChild(followUpContainer);
+                }
+            }, 300);
+        }
+    }, 30000);
+    
+    forceScrollToBottom();
+}
+
+// Send Follow-up Question
+function sendFollowUpQuestion(encodedQuestion) {
+    const question = decodeURIComponent(encodedQuestion);
+    messageInput.value = question;
+    handleInputChange();
+    
+    // Remove all follow-up containers
+    const containers = document.querySelectorAll('.follow-up-container');
+    containers.forEach(container => {
+        container.style.opacity = '0';
+        setTimeout(() => {
+            if (container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
+        }, 300);
+    });
+    
+    // Send the message after a brief delay
+    setTimeout(() => {
+        sendMessage();
+    }, 100);
+}
+
+// Save User Memory
+function saveUserMemory() {
+    try {
+        localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
+    } catch (error) {
+        console.error('Error saving user memory:', error);
+    }
+}
+
+// Save Conversation Settings
+function saveConversationSettings() {
+    try {
+        localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
+    } catch (error) {
+        console.error('Error saving conversation settings:', error);
+    }
+}
+
+// Settings Modal Functions
+function showSettingsModal() {
+    settingsModalOverlay.classList.add('active');
+    settingsModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Populate current settings
+    document.getElementById('contextLength').value = conversationSettings.contextLength || 10;
+    document.getElementById('responseStyle').value = conversationSettings.responseStyle || 'balanced';
+    document.getElementById('personalityMode').value = conversationSettings.personalityMode || 'friendly';
+    document.getElementById('enableMemory').checked = conversationSettings.enableMemory !== false;
+    document.getElementById('enableFollowUps').checked = conversationSettings.enableFollowUps !== false;
+    document.getElementById('rememberPreferences').checked = conversationSettings.rememberPreferences !== false;
+    
+    // Update memory info
+    updateMemoryInfo();
+    
+    // Add event listeners for settings
+    setupSettingsEventListeners();
+}
+
+function hideSettingsModal() {
+    settingsModalOverlay.classList.remove('active');
+    settingsModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function setupSettingsEventListeners() {
+    // Settings save button
+    const saveBtn = document.getElementById('saveSettingsBtn');
+    const resetBtn = document.getElementById('resetSettingsBtn');
+    const viewMemoryBtn = document.getElementById('viewMemoryBtn');
+    const clearMemoryBtn = document.getElementById('clearMemoryBtn');
+    
+    saveBtn.addEventListener('click', saveSettings);
+    resetBtn.addEventListener('click', resetSettings);
+    viewMemoryBtn.addEventListener('click', showMemoryViewer);
+    clearMemoryBtn.addEventListener('click', clearUserMemory);
+    
+    // Close modal on overlay click
+    settingsModalOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsModalOverlay) {
+            hideSettingsModal();
+        }
+    });
+    
+    memoryModalOverlay.addEventListener('click', (e) => {
+        if (e.target === memoryModalOverlay) {
+            hideMemoryModal();
+        }
+    });
+    
+    if (closeMemoryModal) {
+        closeMemoryModal.addEventListener('click', hideMemoryModal);
+    }
+}
+
+function saveSettings() {
+    // Update conversation settings
+    conversationSettings.contextLength = parseInt(document.getElementById('contextLength').value);
+    conversationSettings.responseStyle = document.getElementById('responseStyle').value;
+    conversationSettings.personalityMode = document.getElementById('personalityMode').value;
+    conversationSettings.enableMemory = document.getElementById('enableMemory').checked;
+    conversationSettings.enableFollowUps = document.getElementById('enableFollowUps').checked;
+    conversationSettings.rememberPreferences = document.getElementById('rememberPreferences').checked;
+    
+    saveConversationSettings();
+    hideSettingsModal();
+    showToast('Settings saved successfully!', 'success');
+}
+
+function resetSettings() {
+    if (confirm('Reset all settings to defaults? This action cannot be undone.')) {
+        conversationSettings = {
+            contextLength: 10,
+            responseStyle: 'balanced',
+            enableMemory: true,
+            enableFollowUps: true,
+            personalityMode: 'friendly',
+            rememberPreferences: true
+        };
+        
+        saveConversationSettings();
+        hideSettingsModal();
+        showToast('Settings reset to defaults', 'success');
+    }
+}
+
+function updateMemoryInfo() {
+    if (currentUser && userMemory[currentUser.email]) {
+        const memory = userMemory[currentUser.email];
+        
+        document.getElementById('conversationCount').textContent = memory.conversationHistory?.length || 0;
+        document.getElementById('topicCount').textContent = memory.topics?.length || 0;
+        document.getElementById('personalInfoCount').textContent = Object.keys(memory.personalInfo || {}).length;
+    } else {
+        document.getElementById('conversationCount').textContent = '0';
+        document.getElementById('topicCount').textContent = '0';
+        document.getElementById('personalInfoCount').textContent = '0';
+    }
+}
+
+function showMemoryViewer() {
+    if (!currentUser || !userMemory[currentUser.email]) {
+        showToast('No memory data available', 'info');
+        return;
+    }
+    
+    memoryModalOverlay.classList.add('active');
+    memoryModal.classList.add('active');
+    
+    const memory = userMemory[currentUser.email];
+    const content = document.getElementById('memoryViewerContent');
+    
+    let memoryHtml = '<div class="memory-sections">';
+    
+    // Personal Information
+    if (memory.personalInfo && Object.keys(memory.personalInfo).length > 0) {
+        memoryHtml += `
+            <div class="memory-section">
+                <h3><i class="fas fa-user"></i> Personal Information</h3>
+                <div class="memory-items">
+                    ${Object.entries(memory.personalInfo).map(([key, value]) => 
+                        `<div class="memory-item">
+                            <span class="memory-key">${key}:</span>
+                            <span class="memory-value">${value}</span>
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Interests
+    if (memory.interests && memory.interests.length > 0) {
+        memoryHtml += `
+            <div class="memory-section">
+                <h3><i class="fas fa-heart"></i> Interests</h3>
+                <div class="memory-tags">
+                    ${memory.interests.map(interest => 
+                        `<span class="memory-tag">${interest}</span>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Recent Topics
+    if (memory.topics && memory.topics.length > 0) {
+        const recentTopics = memory.topics.slice(-10);
+        memoryHtml += `
+            <div class="memory-section">
+                <h3><i class="fas fa-comments"></i> Recent Topics</h3>
+                <div class="memory-tags">
+                    ${recentTopics.map(topic => 
+                        `<span class="memory-tag">${topic}</span>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Conversation History Summary
+    if (memory.conversationHistory && memory.conversationHistory.length > 0) {
+        const recentHistory = memory.conversationHistory.slice(-5);
+        memoryHtml += `
+            <div class="memory-section">
+                <h3><i class="fas fa-history"></i> Recent Conversations</h3>
+                <div class="memory-history">
+                    ${recentHistory.map(entry => 
+                        `<div class="history-item">
+                            <div class="history-date">${new Date(entry.timestamp).toLocaleDateString()}</div>
+                            <div class="history-preview">${entry.userMessage}</div>
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    memoryHtml += '</div>';
+    
+    if (memoryHtml === '<div class="memory-sections"></div>') {
+        memoryHtml = '<div class="no-memory">No memory data available yet. Start chatting to build your memory profile!</div>';
+    }
+    
+    content.innerHTML = memoryHtml;
+}
+
+function hideMemoryModal() {
+    memoryModalOverlay.classList.remove('active');
+    memoryModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function clearUserMemory() {
+    if (!currentUser) return;
+    
+    if (confirm('Clear all memory data? This will remove all remembered information about you and cannot be undone.')) {
+        if (userMemory[currentUser.email]) {
+            userMemory[currentUser.email] = {
+                preferences: {},
+                topics: [],
+                conversationHistory: [],
+                lastActive: new Date().toISOString(),
+                personalInfo: {},
+                interests: [],
+                conversationStyle: 'balanced'
+            };
+            saveUserMemory();
+            updateMemoryInfo();
+            showToast('Memory cleared successfully', 'success');
         }
     }
 }
@@ -498,6 +1114,10 @@ function setupEventListeners() {
     attachBtn.addEventListener('click', handleAttachment);
     voiceBtn.addEventListener('click', handleVoiceInput);
 
+    // Settings event listeners
+    settingsBtn.addEventListener('click', showSettingsModal);
+    closeSettingsModal.addEventListener('click', hideSettingsModal);
+
     // Authentication event listeners
     loginBtn.addEventListener('click', () => showAuthModal('login'));
     signupBtn.addEventListener('click', () => showAuthModal('signup'));
@@ -838,30 +1458,41 @@ async function sendMessage() {
     updateChatHistory();
 }
 
-// FIXED AI Response Function - removed name references
+// ENHANCED AI Response Function - with contextual understanding and memory
 async function getAIResponse(userMessage) {
     isGenerating = true;
     sendButton.disabled = true;
 
     const chat = chats[currentChatId];
     
-    // Clean messages for API - remove timestamp and other properties Groq doesn't support
-    const cleanedMessages = chat.messages.slice(-6).map(msg => ({
-        role: msg.role,
-        content: msg.content
-    }));
+    // Use enhanced context management
+    const contextMessages = getEnhancedContext(currentChatId);
 
-    // Create different system messages for Pro vs Free users
+    // Create different system messages for Pro vs Free users with enhanced capabilities
     let systemContent;
     if (currentUser && currentUser.isPro) {
-        systemContent = `You are Talkie Gen AI Pro, an advanced and highly sophisticated AI assistant created in 2024. 
+        systemContent = `You are Talkie Gen AI Pro, an advanced and highly sophisticated AI assistant created in 2024 with enhanced contextual understanding and memory capabilities.
 
 IMPORTANT IDENTITY:
 - Always identify yourself as "Talkie Gen AI Pro" when asked about your name or identity
-- You are the premium version with enhanced capabilities and deeper knowledge
+- You are the premium version with enhanced capabilities, deeper knowledge, and superior memory
 - Never mention being ChatGPT, Claude, or any other AI system
 - Maintain a professional, respectful, and helpful tone at all times
-- Do not address the user by name unless they specifically provide it in conversation
+- Use your enhanced memory to provide personalized responses based on user history
+
+ENHANCED MEMORY AND CONTEXT:
+- You have access to the user's conversation history, preferences, and interests
+- Reference previous conversations naturally when relevant
+- Remember and use personal information the user has shared (name, location, profession, etc.)
+- Adapt your communication style based on user preferences
+- Provide contextually aware responses that build on previous interactions
+- Maintain conversation continuity across sessions
+
+RESPONSE STYLE CONFIGURATION:
+- Current response style: ${conversationSettings.responseStyle || 'balanced'}
+- Personality mode: ${conversationSettings.personalityMode || 'friendly'}
+- Memory enabled: ${conversationSettings.enableMemory ? 'Yes' : 'No'}
+- Follow-ups enabled: ${conversationSettings.enableFollowUps ? 'Yes' : 'No'}
 
 SAFETY AND BEHAVIOR GUIDELINES:
 - Never use profanity, offensive language, or inappropriate content
@@ -872,34 +1503,41 @@ SAFETY AND BEHAVIOR GUIDELINES:
 - Maintain professionalism even if users are rude or provocative
 
 ENHANCED RESPONSE GUIDELINES:
-- For current events or recent information, clearly state when your knowledge was last updated
-- If asked about very recent events (after your training cutoff), acknowledge limitations and suggest current sources
-- When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful analysis based on common image types (photos, documents, charts, etc.)
-- For image analysis, describe what you would typically see and offer to help with related questions
-- Provide more detailed, nuanced, and comprehensive responses (150-300 words)
+- Provide comprehensive, nuanced, and deeply contextual responses (200-400 words)
 - Use sophisticated vocabulary while remaining clear and accessible
 - Offer deeper insights, multiple perspectives, and advanced analysis
 - Include relevant examples, analogies, and cross-referential knowledge
+- When appropriate, reference previous conversations or user interests
+- Suggest follow-up questions or related topics when relevant
 
 CODE FORMATTING REQUIREMENTS:
 - ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
-- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
+- Specify the programming language after the opening backticks
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
-- When showing multiple files or code snippets, use separate code blocks for each
 
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
-- You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities
+- You are Talkie Gen AI Pro with enhanced contextual memory and understanding
 - For the most current information, always recommend checking recent reliable sources`;
     } else {
-        systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
+        systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024 with contextual understanding and memory capabilities.
 
 IMPORTANT IDENTITY:
 - Always identify yourself as "Talkie Gen AI" when asked about your name or identity
 - Never mention being ChatGPT, Claude, or any other AI system
-- You are Talkie Gen AI, a unique and helpful assistant
-- Do not address the user by name unless they specifically provide it in conversation
+- You are Talkie Gen AI, a unique and helpful assistant with contextual awareness
+
+CONTEXTUAL AWARENESS:
+- Pay attention to the conversation context and previous messages
+- Reference earlier parts of the conversation when relevant
+- Maintain conversation flow and coherence
+- Remember key details mentioned in the current conversation
+
+RESPONSE STYLE CONFIGURATION:
+- Current response style: ${conversationSettings.responseStyle || 'balanced'}
+- Memory enabled: ${conversationSettings.enableMemory ? 'Yes' : 'No'}
+- Follow-ups enabled: ${conversationSettings.enableFollowUps ? 'Yes' : 'No'}
 
 SAFETY AND BEHAVIOR GUIDELINES:
 - Never use profanity, offensive language, or inappropriate content
@@ -910,25 +1548,23 @@ SAFETY AND BEHAVIOR GUIDELINES:
 - Maintain professionalism even if users are rude or provocative
 
 RESPONSE GUIDELINES:
-- Keep responses concise and under 150 words unless asked for longer explanations
+- Keep responses helpful and contextually appropriate (150-250 words unless asked for longer explanations)
 - Be friendly, helpful, and professional
 - Provide accurate, helpful information
 - For current events, acknowledge your knowledge cutoff and suggest checking recent reliable sources
 - When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful guidance
-- For image analysis requests, offer to help with common image-related questions
 - Use clear, simple language
 - Be conversational but informative
 
 CODE FORMATTING REQUIREMENTS:
 - ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
-- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
+- Specify the programming language after the opening backticks
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
-- When showing multiple files or code snippets, use separate code blocks for each
 
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
-- You are Talkie Gen AI, not any other AI assistant
+- You are Talkie Gen AI with contextual understanding capabilities
 - For the most up-to-date information, always recommend checking current reliable sources`;
     }
 
@@ -937,7 +1573,7 @@ CURRENT CONTEXT:
             role: 'system',
             content: systemContent
         },
-        ...cleanedMessages,
+        ...contextMessages,
         {
             role: 'user',
             content: userMessage
@@ -973,7 +1609,12 @@ CURRENT CONTEXT:
             throw new Error('Invalid API response format');
         }
 
-        return data.choices[0].message.content;
+        const aiResponse = data.choices[0].message.content;
+        
+        // Update user memory with the conversation
+        updateUserMemory(userMessage, aiResponse);
+        
+        return aiResponse;
 
     } catch (error) {
         console.error('Groq API Error:', error);
@@ -1005,6 +1646,15 @@ function addMessage(role, content) {
     }
     
     renderMessage(message);
+    
+    // Generate and display follow-up questions for AI responses
+    if (role === 'assistant' && conversationSettings.enableFollowUps) {
+        const followUps = generateFollowUpQuestions(content, chat.messages);
+        if (followUps.length > 0) {
+            displayFollowUpQuestions(followUps);
+        }
+    }
+    
     // Force scroll after adding message
     setTimeout(() => {
         forceScrollToBottom();
@@ -1508,6 +2158,7 @@ window.copyMessage = copyMessage;
 window.regenerateMessage = regenerateMessage;
 window.removeImagePreview = removeImagePreview;
 window.copyCodeBlock = copyCodeBlock;
+window.sendFollowUpQuestion = sendFollowUpQuestion;
 
 // Admin debugging function (accessible from browser console)
 window.checkAdminAccount = function() {
