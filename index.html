@@ -105,6 +105,9 @@
                     </div>
                 </div>
                 <div class="header-actions">
+                    <button class="header-btn" id="docsBtn" title="Documentation">
+                        <i class="fas fa-book"></i>
+                    </button>
                     <button class="header-btn" id="shareBtn">
                         <i class="fas fa-share"></i>
                     </button>
@@ -531,6 +534,87 @@
             </div>
             <div class="memory-viewer-content" id="memoryViewerContent">
                 <!-- Memory content will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="shareModalOverlay">
+        <div class="auth-modal" id="shareModal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Share Talkie Gen AI</h2>
+                <p>Share this amazing AI assistant with others</p>
+                <button class="modal-close" id="closeShareModal">&times;</button>
+            </div>
+            <div class="share-content">
+                <div class="share-section">
+                    <h3>Share on Social Media</h3>
+                    <div class="share-platforms">
+                        <button class="share-platform-btn twitter" id="shareTwitter">
+                            <i class="fab fa-twitter"></i>
+                            <span>Twitter</span>
+                        </button>
+                        <button class="share-platform-btn facebook" id="shareFacebook">
+                            <i class="fab fa-facebook"></i>
+                            <span>Facebook</span>
+                        </button>
+                        <button class="share-platform-btn linkedin" id="shareLinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                            <span>LinkedIn</span>
+                        </button>
+                        <button class="share-platform-btn reddit" id="shareReddit">
+                            <i class="fab fa-reddit"></i>
+                            <span>Reddit</span>
+                        </button>
+                        <button class="share-platform-btn whatsapp" id="shareWhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </button>
+                        <button class="share-platform-btn telegram" id="shareTelegram">
+                            <i class="fab fa-telegram"></i>
+                            <span>Telegram</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="share-section">
+                    <h3>Copy Link</h3>
+                    <div class="copy-link-container">
+                        <input type="text" id="shareUrlInput" readonly value="https://talkiegen.me" />
+                        <button class="copy-link-btn" id="copyShareLink">
+                            <i class="fas fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="share-section">
+                    <h3>Direct Actions</h3>
+                    <div class="share-actions">
+                        <button class="share-action-btn" id="shareEmail">
+                            <i class="fas fa-envelope"></i>
+                            <span>Share via Email</span>
+                        </button>
+                        <button class="share-action-btn" id="shareSMS">
+                            <i class="fas fa-sms"></i>
+                            <span>Share via SMS</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation Modal -->
+    <div class="modal-overlay" id="docsModalOverlay">
+        <div class="auth-modal" id="docsModal" style="max-width: 800px; max-height: 90vh;">
+            <div class="modal-header">
+                <h2>Talkie Gen AI Documentation</h2>
+                <p>Everything you need to know about features and capabilities</p>
+                <button class="modal-close" id="closeDocsModal">&times;</button>
+            </div>
+            <div class="docs-content" id="docsContent">
+                <!-- Documentation content will be populated here -->
             </div>
         </div>
     </div>

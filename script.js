@@ -34,6 +34,18 @@ const memoryModalOverlay = document.getElementById('memoryModalOverlay');
 const memoryModal = document.getElementById('memoryModal');
 const closeMemoryModal = document.getElementById('closeMemoryModal');
 
+// Share DOM Elements
+const shareBtn = document.getElementById('shareBtn');
+const shareModalOverlay = document.getElementById('shareModalOverlay');
+const shareModal = document.getElementById('shareModal');
+const closeShareModal = document.getElementById('closeShareModal');
+
+// Documentation DOM Elements
+const docsBtn = document.getElementById('docsBtn');
+const docsModalOverlay = document.getElementById('docsModalOverlay');
+const docsModal = document.getElementById('docsModal');
+const closeDocsModal = document.getElementById('closeDocsModal');
+
 // Authentication DOM Elements
 const authModalOverlay = document.getElementById('authModalOverlay');
 const loginModal = document.getElementById('loginModal');
@@ -95,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
     initializeMemorySystem(); // Initialize enhanced memory system
+    handleDocumentationRouting(); // Handle docs URL routing
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
@@ -1118,6 +1131,14 @@ function setupEventListeners() {
     settingsBtn.addEventListener('click', showSettingsModal);
     closeSettingsModal.addEventListener('click', hideSettingsModal);
 
+    // Share event listeners
+    shareBtn.addEventListener('click', showShareModal);
+    closeShareModal.addEventListener('click', hideShareModal);
+
+    // Documentation event listeners
+    docsBtn.addEventListener('click', showDocsModal);
+    closeDocsModal.addEventListener('click', hideDocsModal);
+
     // Authentication event listeners
     loginBtn.addEventListener('click', () => showAuthModal('login'));
     signupBtn.addEventListener('click', () => showAuthModal('signup'));
@@ -1161,6 +1182,18 @@ function setupEventListeners() {
             }
         });
     }
+
+    shareModalOverlay.addEventListener('click', (e) => {
+        if (e.target === shareModalOverlay) {
+            hideShareModal();
+        }
+    });
+
+    docsModalOverlay.addEventListener('click', (e) => {
+        if (e.target === docsModalOverlay) {
+            hideDocsModal();
+        }
+    });
 
     document.addEventListener('click', (e) => {
         if (!userMenu.contains(e.target)) {
@@ -2417,5 +2450,410 @@ function loadAdminStats() {
         }).join('');
     } else {
         activityList.innerHTML = '<div class="no-activity">No recent activity</div>';
+    }
+}
+
+// Share Modal Functions
+function showShareModal() {
+    shareModalOverlay.classList.add('active');
+    shareModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Set up share buttons
+    setupShareButtons();
+}
+
+function hideShareModal() {
+    shareModalOverlay.classList.remove('active');
+    shareModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function setupShareButtons() {
+    const shareData = {
+        url: 'https://talkiegen.me',
+        title: 'Talkie Gen AI',
+        text: 'Check out Talkie Gen AI - an amazing intelligent AI assistant that can help with anything you need! 🤖✨'
+    };
+    
+    // Social media sharing
+    document.getElementById('shareTwitter').onclick = () => {
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareData.text)}&url=${encodeURIComponent(shareData.url)}`;
+        window.open(twitterUrl, '_blank', 'width=550,height=420');
+    };
+    
+    document.getElementById('shareFacebook').onclick = () => {
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.url)}`;
+        window.open(facebookUrl, '_blank', 'width=580,height=296');
+    };
+    
+    document.getElementById('shareLinkedIn').onclick = () => {
+        const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareData.url)}`;
+        window.open(linkedinUrl, '_blank', 'width=520,height=570');
+    };
+    
+    document.getElementById('shareReddit').onclick = () => {
+        const redditUrl = `https://reddit.com/submit?url=${encodeURIComponent(shareData.url)}&title=${encodeURIComponent(shareData.title)}`;
+        window.open(redditUrl, '_blank', 'width=600,height=500');
+    };
+    
+    document.getElementById('shareWhatsApp').onclick = () => {
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + shareData.url)}`;
+        window.open(whatsappUrl, '_blank');
+    };
+    
+    document.getElementById('shareTelegram').onclick = () => {
+        const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareData.url)}&text=${encodeURIComponent(shareData.text)}`;
+        window.open(telegramUrl, '_blank');
+    };
+    
+    // Copy link functionality
+    document.getElementById('copyShareLink').onclick = () => {
+        const urlInput = document.getElementById('shareUrlInput');
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999); // For mobile devices
+        
+        navigator.clipboard.writeText(shareData.url).then(() => {
+            const copyBtn = document.getElementById('copyShareLink');
+            const originalText = copyBtn.querySelector('span').textContent;
+            const icon = copyBtn.querySelector('i');
+            
+            // Update button to show success
+            icon.className = 'fas fa-check';
+            copyBtn.querySelector('span').textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                icon.className = 'fas fa-copy';
+                copyBtn.querySelector('span').textContent = originalText;
+                copyBtn.classList.remove('copied');
+            }, 2000);
+            
+            showToast('Link copied to clipboard!', 'success');
+        }).catch(() => {
+            // Fallback for older browsers
+            try {
+                document.execCommand('copy');
+                showToast('Link copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Unable to copy link', 'error');
+            }
+        });
+    };
+    
+    // Email sharing
+    document.getElementById('shareEmail').onclick = () => {
+        const subject = encodeURIComponent(shareData.title);
+        const body = encodeURIComponent(`${shareData.text}\n\n${shareData.url}`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    };
+    
+    // SMS sharing
+    document.getElementById('shareSMS').onclick = () => {
+        const message = encodeURIComponent(`${shareData.text} ${shareData.url}`);
+        window.location.href = `sms:?body=${message}`;
+    };
+}
+
+// Documentation Functions
+function showDocsModal() {
+    docsModalOverlay.classList.add('active');
+    docsModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Load documentation content
+    loadDocumentationContent();
+}
+
+function hideDocsModal() {
+    docsModalOverlay.classList.remove('active');
+    docsModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function loadDocumentationContent() {
+    const docsContent = document.getElementById('docsContent');
+    
+    docsContent.innerHTML = `
+        <div class="docs-sections">
+            <div class="docs-nav">
+                <div class="docs-nav-item active" data-section="getting-started">
+                    <i class="fas fa-rocket"></i>
+                    <span>Getting Started</span>
+                </div>
+                <div class="docs-nav-item" data-section="features">
+                    <i class="fas fa-star"></i>
+                    <span>Features</span>
+                </div>
+                <div class="docs-nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </div>
+                <div class="docs-nav-item" data-section="pro-features">
+                    <i class="fas fa-crown"></i>
+                    <span>Pro Features</span>
+                </div>
+                <div class="docs-nav-item" data-section="coming-soon">
+                    <i class="fas fa-clock"></i>
+                    <span>Coming Soon</span>
+                </div>
+                <div class="docs-nav-item" data-section="troubleshooting">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Help & FAQ</span>
+                </div>
+            </div>
+            
+            <div class="docs-main">
+                <div class="docs-section active" id="getting-started">
+                    <h2>🚀 Getting Started</h2>
+                    <p>Welcome to <strong>Talkie Gen AI</strong> - your intelligent AI companion! Here's everything you need to know to get started.</p>
+                    
+                    <h3>What is Talkie Gen AI?</h3>
+                    <p>Talkie Gen AI is an advanced conversational AI assistant powered by cutting-edge language models. It can help you with:</p>
+                    <ul>
+                        <li>📝 Writing and content creation</li>
+                        <li>💻 Programming and code assistance</li>
+                        <li>🧠 Problem solving and analysis</li>
+                        <li>🎨 Creative tasks and brainstorming</li>
+                        <li>📚 Learning and education</li>
+                        <li>🌐 General knowledge and information</li>
+                    </ul>
+                    
+                    <h3>How to Start Chatting</h3>
+                    <ol>
+                        <li>Type your message in the input box at the bottom</li>
+                        <li>Press Enter or click the send button</li>
+                        <li>Wait for the AI to respond</li>
+                        <li>Continue the conversation naturally!</li>
+                    </ol>
+                    
+                    <div class="docs-tip">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Tip:</strong> Try the example prompts on the welcome screen to get started quickly!
+                    </div>
+                </div>
+                
+                <div class="docs-section" id="features">
+                    <h2>⭐ Core Features</h2>
+                    
+                    <h3>💬 Intelligent Conversations</h3>
+                    <p>Talkie Gen AI maintains context throughout your conversation and provides thoughtful, relevant responses.</p>
+                    
+                    <h3>🧠 Memory System</h3>
+                    <p>The AI can remember information about you across sessions (when enabled in settings):</p>
+                    <ul>
+                        <li>Personal preferences and interests</li>
+                        <li>Previous conversation topics</li>
+                        <li>Your communication style preferences</li>
+                    </ul>
+                    
+                    <h3>💻 Code Support</h3>
+                    <p>Get help with programming in multiple languages:</p>
+                    <ul>
+                        <li>Syntax highlighting and proper formatting</li>
+                        <li>Code explanations and debugging</li>
+                        <li>Best practices and optimization tips</li>
+                        <li>Copy code blocks with one click</li>
+                    </ul>
+                    
+                    <h3>🎨 Creative Writing</h3>
+                    <p>Assistance with various writing tasks:</p>
+                    <ul>
+                        <li>Stories, poems, and creative content</li>
+                        <li>Professional emails and documents</li>
+                        <li>Blog posts and articles</li>
+                        <li>Editing and proofreading</li>
+                    </ul>
+                    
+                    <h3>📁 Chat Management</h3>
+                    <p>Organize your conversations effectively:</p>
+                    <ul>
+                        <li>Multiple conversation threads</li>
+                        <li>Chat history and search</li>
+                        <li>Export conversations</li>
+                        <li>Delete individual chats or clear all</li>
+                    </ul>
+                </div>
+                
+                <div class="docs-section" id="settings">
+                    <h2>⚙️ Settings & Customization</h2>
+                    
+                    <h3>Context & Memory</h3>
+                    <ul>
+                        <li><strong>Context Length:</strong> How many previous messages to remember (5-20 messages)</li>
+                        <li><strong>Memory Across Sessions:</strong> Remember your preferences between visits</li>
+                    </ul>
+                    
+                    <h3>Response Style</h3>
+                    <ul>
+                        <li><strong>Response Style:</strong> Concise, Balanced, Detailed, or Creative</li>
+                        <li><strong>AI Personality:</strong> Professional, Friendly, Casual, or Academic</li>
+                    </ul>
+                    
+                    <h3>Conversation Features</h3>
+                    <ul>
+                        <li><strong>Follow-up Questions:</strong> Get suggested questions after AI responses</li>
+                        <li><strong>Remember Preferences:</strong> Learn and adapt to your interests</li>
+                    </ul>
+                    
+                    <h3>Themes</h3>
+                    <ul>
+                        <li><strong>Light Mode:</strong> Clean, bright interface</li>
+                        <li><strong>Dark Mode:</strong> Easy on the eyes for low-light environments</li>
+                        <li><strong>Pro Mode:</strong> Exclusive theme for Pro users</li>
+                    </ul>
+                </div>
+                
+                <div class="docs-section" id="pro-features">
+                    <h2>👑 Pro Features</h2>
+                    <p>Upgrade to Talkie Gen Pro for enhanced capabilities:</p>
+                    
+                    <h3>Enhanced AI Responses</h3>
+                    <ul>
+                        <li>More detailed and comprehensive answers</li>
+                        <li>Advanced contextual understanding</li>
+                        <li>Superior memory capabilities</li>
+                        <li>Faster response times</li>
+                    </ul>
+                    
+                    <h3>Exclusive Features</h3>
+                    <ul>
+                        <li>Profile customization with photo uploads</li>
+                        <li>Advanced memory management</li>
+                        <li>Exclusive Pro theme</li>
+                        <li>Priority support</li>
+                    </ul>
+                    
+                    <h3>Extended Limits</h3>
+                    <ul>
+                        <li>Longer conversation context</li>
+                        <li>More detailed responses</li>
+                        <li>Enhanced code analysis</li>
+                    </ul>
+                    
+                    <div class="docs-upgrade">
+                        <i class="fas fa-crown"></i>
+                        <strong>Ready to upgrade?</strong> Contact an administrator for Pro access.
+                    </div>
+                </div>
+                
+                <div class="docs-section" id="coming-soon">
+                    <h2>🔮 Coming Soon</h2>
+                    <p>Exciting features we're working on:</p>
+                    
+                    <h3>🎨 Image Generation</h3>
+                    <p>Create images from text descriptions using advanced AI models.</p>
+                    
+                    <h3>📄 Document Analysis</h3>
+                    <p>Upload and analyze PDFs, Word documents, and other file types.</p>
+                    
+                    <h3>🌐 Web Search Integration</h3>
+                    <p>Get real-time information from the web for current events and latest data.</p>
+                    
+                    <h3>🎵 Audio Features</h3>
+                    <p>Voice conversations and audio responses for hands-free interaction.</p>
+                    
+                    <h3>🤝 Collaboration Tools</h3>
+                    <p>Share conversations and collaborate with others on projects.</p>
+                    
+                    <h3>📊 Analytics Dashboard</h3>
+                    <p>Track your usage patterns and conversation insights.</p>
+                    
+                    <h3>🔌 API Access</h3>
+                    <p>Integrate Talkie Gen AI into your own applications and workflows.</p>
+                    
+                    <div class="docs-roadmap">
+                        <i class="fas fa-road"></i>
+                        <strong>Stay tuned!</strong> These features are in active development and will be released in upcoming updates.
+                    </div>
+                </div>
+                
+                <div class="docs-section" id="troubleshooting">
+                    <h2>❓ Help & FAQ</h2>
+                    
+                    <h3>Common Issues</h3>
+                    
+                    <h4>Q: The AI isn't responding to my messages</h4>
+                    <p>A: This could be due to:</p>
+                    <ul>
+                        <li>Internet connectivity issues</li>
+                        <li>Temporary server maintenance</li>
+                        <li>Browser compatibility issues</li>
+                    </ul>
+                    <p><strong>Solution:</strong> Refresh the page and try again. If the issue persists, try a different browser.</p>
+                    
+                    <h4>Q: My chat history disappeared</h4>
+                    <p>A: Chat history is stored locally in your browser. It may be lost if:</p>
+                    <ul>
+                        <li>Browser data was cleared</li>
+                        <li>Using incognito/private browsing mode</li>
+                        <li>Different device or browser</li>
+                    </ul>
+                    <p><strong>Solution:</strong> Export important conversations regularly using the export feature.</p>
+                    
+                    <h4>Q: Settings aren't saving</h4>
+                    <p>A: Settings are stored locally. Ensure:</p>
+                    <ul>
+                        <li>Local storage is enabled in your browser</li>
+                        <li>You're not in incognito mode</li>
+                        <li>Browser has sufficient storage space</li>
+                    </ul>
+                    
+                    <h3>Best Practices</h3>
+                    <ul>
+                        <li>🔄 <strong>Regular exports:</strong> Export important conversations</li>
+                        <li>🎯 <strong>Clear prompts:</strong> Be specific about what you need</li>
+                        <li>💾 <strong>Save settings:</strong> Configure your preferences in Settings</li>
+                        <li>🌐 <strong>Modern browser:</strong> Use an up-to-date browser for best experience</li>
+                    </ul>
+                    
+                    <h3>Contact Support</h3>
+                    <p>Need more help? Contact our support team:</p>
+                    <ul>
+                        <li>📧 Email: support@talkiegen.me</li>
+                        <li>💬 In-app: Use the chat for technical questions</li>
+                        <li>🐛 Report bugs via the feedback system</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Set up navigation
+    setupDocsNavigation();
+}
+
+function setupDocsNavigation() {
+    const navItems = document.querySelectorAll('.docs-nav-item');
+    const sections = document.querySelectorAll('.docs-section');
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetSection = item.getAttribute('data-section');
+            
+            // Remove active class from all nav items and sections
+            navItems.forEach(nav => nav.classList.remove('active'));
+            sections.forEach(section => section.classList.remove('active'));
+            
+            // Add active class to clicked nav item and corresponding section
+            item.classList.add('active');
+            document.getElementById(targetSection).classList.add('active');
+        });
+    });
+}
+
+// URL-based documentation routing
+function handleDocumentationRouting() {
+    // Check if URL contains /docs or ?docs
+    const url = window.location.href.toLowerCase();
+    if (url.includes('/docs') || url.includes('?docs')) {
+        showDocsModal();
+        
+        // Clean URL without reloading page
+        if (url.includes('?docs')) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
     }
 }

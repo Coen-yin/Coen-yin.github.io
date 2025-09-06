@@ -2517,3 +2517,359 @@ textarea:focus-visible {
     border-radius: 8px;
     padding: 16px;
 }
+
+/* Share Modal Styles */
+.share-content {
+    padding: 0;
+}
+
+.share-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.share-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.share-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.share-platforms {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.share-platform-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: white;
+}
+
+.share-platform-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.share-platform-btn.twitter {
+    background: #1da1f2;
+}
+
+.share-platform-btn.facebook {
+    background: #3b5998;
+}
+
+.share-platform-btn.linkedin {
+    background: #0077b5;
+}
+
+.share-platform-btn.reddit {
+    background: #ff4500;
+}
+
+.share-platform-btn.whatsapp {
+    background: #25d366;
+}
+
+.share-platform-btn.telegram {
+    background: #0088cc;
+}
+
+.copy-link-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.copy-link-container input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+}
+
+.copy-link-btn {
+    padding: 12px 16px;
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 80px;
+    justify-content: center;
+}
+
+.copy-link-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.copy-link-btn.copied {
+    background: var(--success);
+}
+
+.share-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.share-action-btn {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.share-action-btn:hover {
+    background: var(--bg-primary);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    transform: translateY(-1px);
+}
+
+/* Documentation Modal Styles */
+.docs-content {
+    padding: 0;
+    max-height: 70vh;
+    overflow: hidden;
+}
+
+.docs-sections {
+    display: flex;
+    height: 70vh;
+}
+
+.docs-nav {
+    width: 200px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-light);
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.docs-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.docs-nav-item:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.docs-nav-item.active {
+    background: var(--accent-primary);
+    color: white;
+    border-left: 4px solid var(--accent-secondary);
+}
+
+.docs-nav-item i {
+    width: 16px;
+    font-size: 14px;
+}
+
+.docs-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.docs-section {
+    display: none;
+}
+
+.docs-section.active {
+    display: block;
+}
+
+.docs-section h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-primary);
+}
+
+.docs-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 24px 0 12px 0;
+}
+
+.docs-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 16px 0 8px 0;
+}
+
+.docs-section p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.docs-section ul, .docs-section ol {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 16px;
+    margin-left: 20px;
+}
+
+.docs-section li {
+    margin-bottom: 4px;
+}
+
+.docs-tip, .docs-upgrade, .docs-roadmap {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.docs-tip {
+    border-left: 4px solid var(--warning);
+}
+
+.docs-upgrade {
+    border-left: 4px solid var(--accent-primary);
+}
+
+.docs-roadmap {
+    border-left: 4px solid var(--success);
+}
+
+.docs-tip i, .docs-upgrade i, .docs-roadmap i {
+    color: var(--warning);
+    font-size: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.docs-upgrade i {
+    color: var(--accent-primary);
+}
+
+.docs-roadmap i {
+    color: var(--success);
+}
+
+/* Mobile responsiveness for new modals */
+@media (max-width: 768px) {
+    .share-platforms {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .share-actions {
+        flex-direction: column;
+    }
+    
+    .share-action-btn {
+        min-width: auto;
+    }
+    
+    .docs-sections {
+        flex-direction: column;
+        height: auto;
+        max-height: 70vh;
+    }
+    
+    .docs-nav {
+        width: 100%;
+        max-height: 150px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    
+    .docs-nav-item {
+        white-space: nowrap;
+        border-bottom: none;
+        border-right: 1px solid var(--border-light);
+        flex-shrink: 0;
+    }
+    
+    .docs-main {
+        padding: 16px;
+        max-height: 50vh;
+    }
+    
+    .copy-link-container {
+        flex-direction: column;
+    }
+    
+    .copy-link-container input {
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .share-platforms {
+        grid-template-columns: 1fr;
+    }
+    
+    .docs-nav-item span {
+        display: none;
+    }
+    
+    .docs-nav-item {
+        padding: 12px;
+        justify-content: center;
+    }
+}
