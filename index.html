@@ -416,6 +416,125 @@
         </div>
     </div>
 
+    <!-- Enhanced Settings Modal -->
+    <div class="modal-overlay" id="settingsModalOverlay">
+        <div class="auth-modal" id="settingsModal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Conversation Settings</h2>
+                <p>Customize your AI experience</p>
+                <button class="modal-close" id="closeSettingsModal">&times;</button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3>Context & Memory</h3>
+                    <div class="setting-item">
+                        <label for="contextLength">Context Length</label>
+                        <select id="contextLength">
+                            <option value="5">Short (5 messages)</option>
+                            <option value="10">Medium (10 messages)</option>
+                            <option value="15">Long (15 messages)</option>
+                            <option value="20">Extended (20 messages)</option>
+                        </select>
+                        <small>How many previous messages to remember in conversation</small>
+                    </div>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="enableMemory">
+                            <span class="toggle-slider"></span>
+                            Enable Memory Across Sessions
+                        </label>
+                        <small>Remember your preferences and conversation history</small>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Response Style</h3>
+                    <div class="setting-item">
+                        <label for="responseStyle">Response Style</label>
+                        <select id="responseStyle">
+                            <option value="concise">Concise</option>
+                            <option value="balanced">Balanced</option>
+                            <option value="detailed">Detailed</option>
+                            <option value="creative">Creative</option>
+                        </select>
+                        <small>How detailed and creative should responses be</small>
+                    </div>
+                    <div class="setting-item">
+                        <label for="personalityMode">AI Personality</label>
+                        <select id="personalityMode">
+                            <option value="professional">Professional</option>
+                            <option value="friendly">Friendly</option>
+                            <option value="casual">Casual</option>
+                            <option value="academic">Academic</option>
+                        </select>
+                        <small>The personality style for AI responses</small>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Conversation Features</h3>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="enableFollowUps">
+                            <span class="toggle-slider"></span>
+                            Show Follow-up Questions
+                        </label>
+                        <small>Display suggested follow-up questions after AI responses</small>
+                    </div>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="rememberPreferences">
+                            <span class="toggle-slider"></span>
+                            Remember User Preferences
+                        </label>
+                        <small>Learn and remember your interests and preferences</small>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Memory Management</h3>
+                    <div class="memory-info" id="memoryInfo">
+                        <div class="memory-stat">
+                            <span class="memory-label">Stored Conversations:</span>
+                            <span class="memory-value" id="conversationCount">0</span>
+                        </div>
+                        <div class="memory-stat">
+                            <span class="memory-label">Remembered Topics:</span>
+                            <span class="memory-value" id="topicCount">0</span>
+                        </div>
+                        <div class="memory-stat">
+                            <span class="memory-label">Personal Info Items:</span>
+                            <span class="memory-value" id="personalInfoCount">0</span>
+                        </div>
+                    </div>
+                    <div class="memory-actions">
+                        <button class="memory-btn" id="viewMemoryBtn">View My Memory</button>
+                        <button class="memory-btn danger" id="clearMemoryBtn">Clear Memory</button>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn secondary" id="resetSettingsBtn">Reset to Defaults</button>
+                    <button class="settings-btn primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Viewer Modal -->
+    <div class="modal-overlay" id="memoryModalOverlay">
+        <div class="auth-modal" id="memoryModal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>My Memory</h2>
+                <p>What I remember about you</p>
+                <button class="modal-close" id="closeMemoryModal">&times;</button>
+            </div>
+            <div class="memory-viewer-content" id="memoryViewerContent">
+                <!-- Memory content will be populated here -->
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
