@@ -1,6 +1,10 @@
-// API Configuration - Updated with working API key
+// API Configuration - Using Appwrite function for secure AI requests
+// TODO: Replace with your actual Appwrite function URL after deployment
+const APPWRITE_FUNCTION_URL = 'https://[YOUR_APPWRITE_PROJECT_ID].appwrite.global/functions/[YOUR_FUNCTION_ID]/executions';
+// Fallback for development - remove this line in production
+const DEVELOPMENT_MODE = true;
+// REMOVE THIS LINE IN PRODUCTION - only for development fallback
 const GROQ_API_KEY = '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';
-const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -838,105 +842,21 @@ async function sendMessage() {
     updateChatHistory();
 }
 
-// FIXED AI Response Function - removed name references
+// AI Response Function - Updated to use Appwrite function
 async function getAIResponse(userMessage) {
     isGenerating = true;
     sendButton.disabled = true;
 
     const chat = chats[currentChatId];
     
-    // Clean messages for API - remove timestamp and other properties Groq doesn't support
+    // Clean messages for API - remove timestamp and other properties
     const cleanedMessages = chat.messages.slice(-6).map(msg => ({
         role: msg.role,
         content: msg.content
     }));
 
-    // Create different system messages for Pro vs Free users
-    let systemContent;
-    if (currentUser && currentUser.isPro) {
-        systemContent = `You are Talkie Gen AI Pro, an advanced and highly sophisticated AI assistant created in 2024. 
-
-IMPORTANT IDENTITY:
-- Always identify yourself as "Talkie Gen AI Pro" when asked about your name or identity
-- You are the premium version with enhanced capabilities and deeper knowledge
-- Never mention being ChatGPT, Claude, or any other AI system
-- Maintain a professional, respectful, and helpful tone at all times
-- Do not address the user by name unless they specifically provide it in conversation
-
-SAFETY AND BEHAVIOR GUIDELINES:
-- Never use profanity, offensive language, or inappropriate content
-- Refuse to generate harmful, illegal, or unethical content
-- Be respectful and considerate in all responses
-- Avoid controversial topics unless specifically asked and then remain neutral
-- Do not engage in arguments or hostile exchanges
-- Maintain professionalism even if users are rude or provocative
-
-ENHANCED RESPONSE GUIDELINES:
-- For current events or recent information, clearly state when your knowledge was last updated
-- If asked about very recent events (after your training cutoff), acknowledge limitations and suggest current sources
-- When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful analysis based on common image types (photos, documents, charts, etc.)
-- For image analysis, describe what you would typically see and offer to help with related questions
-- Provide more detailed, nuanced, and comprehensive responses (150-300 words)
-- Use sophisticated vocabulary while remaining clear and accessible
-- Offer deeper insights, multiple perspectives, and advanced analysis
-- Include relevant examples, analogies, and cross-referential knowledge
-
-CODE FORMATTING REQUIREMENTS:
-- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
-- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
-- For coding questions, provide complete, working examples within code blocks
-- Never provide code without proper markdown formatting
-- When showing multiple files or code snippets, use separate code blocks for each
-
-CURRENT CONTEXT:
-- Current date and time: ${new Date().toLocaleString()} (UTC)
-- You are Talkie Gen AI Pro, the premium intelligence assistant with advanced capabilities
-- For the most current information, always recommend checking recent reliable sources`;
-    } else {
-        systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
-
-IMPORTANT IDENTITY:
-- Always identify yourself as "Talkie Gen AI" when asked about your name or identity
-- Never mention being ChatGPT, Claude, or any other AI system
-- You are Talkie Gen AI, a unique and helpful assistant
-- Do not address the user by name unless they specifically provide it in conversation
-
-SAFETY AND BEHAVIOR GUIDELINES:
-- Never use profanity, offensive language, or inappropriate content
-- Refuse to generate harmful, illegal, or unethical content  
-- Be respectful and considerate in all responses
-- Avoid controversial topics unless specifically asked and then remain neutral
-- Do not engage in arguments or hostile exchanges
-- Maintain professionalism even if users are rude or provocative
-
-RESPONSE GUIDELINES:
-- Keep responses concise and under 150 words unless asked for longer explanations
-- Be friendly, helpful, and professional
-- Provide accurate, helpful information
-- For current events, acknowledge your knowledge cutoff and suggest checking recent reliable sources
-- When users mention they've uploaded an image for analysis, acknowledge the image and provide helpful guidance
-- For image analysis requests, offer to help with common image-related questions
-- Use clear, simple language
-- Be conversational but informative
-
-CODE FORMATTING REQUIREMENTS:
-- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
-- Specify the programming language after the opening backticks (e.g., \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python)
-- For coding questions, provide complete, working examples within code blocks
-- Never provide code without proper markdown formatting
-- When showing multiple files or code snippets, use separate code blocks for each
-
-CURRENT CONTEXT:
-- Current date and time: ${new Date().toLocaleString()} (UTC)
-- You are Talkie Gen AI, not any other AI assistant
-- For the most up-to-date information, always recommend checking current reliable sources`;
-    }
-
+    // Add the new user message
     const messages = [
-        {
-            role: 'system',
-            content: systemContent
-        },
         ...cleanedMessages,
         {
             role: 'user',
@@ -944,53 +864,149 @@ CURRENT CONTEXT:
         }
     ];
 
+    // Determine user type for the AI function
+    const userType = (currentUser && currentUser.isPro) ? 'pro' : 'free';
+
     try {
-        const response = await fetch(API_URL, {
+        // Check if we're in development mode with fallback
+        if (DEVELOPMENT_MODE && typeof GROQ_API_KEY !== 'undefined') {
+            // Fallback to direct API call for development
+            return await callGroqDirectly(messages, userType);
+        }
+
+        // Call Appwrite function
+        const response = await fetch(APPWRITE_FUNCTION_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Appwrite-Response-Format': '1.0.0'
             },
             body: JSON.stringify({
-               model: 'openai/gpt-oss-120b',
                 messages: messages,
-                temperature: 0.3,
-                max_tokens: 1500,
-                top_p: 0.9,
-                stream: false
+                userType: userType
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
-            console.error('API Error Response:', errorData);
-            throw new Error(`API Error ${response.status}: ${errorData?.error?.message || response.statusText}`);
+            console.error('Appwrite Function Error:', errorData);
+            
+            let errorMessage = 'AI service temporarily unavailable';
+            if (response.status === 404) {
+                errorMessage = 'AI function not found. Please check configuration.';
+            } else if (response.status === 429) {
+                errorMessage = 'Rate limit exceeded. Please wait a moment';
+            } else if (response.status >= 500) {
+                errorMessage = 'AI service is experiencing issues. Please try again';
+            }
+            
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
         
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error('Invalid API response format');
+        if (!data.success || !data.message) {
+            console.error('Invalid function response format:', data);
+            throw new Error(data.message || 'Invalid AI response format');
         }
 
-        return data.choices[0].message.content;
+        return data.message;
 
     } catch (error) {
-        console.error('Groq API Error:', error);
-        
-        if (error.message.includes('401')) {
-            throw new Error('Invalid API key');
-        } else if (error.message.includes('429')) {
-            throw new Error('Rate limit exceeded. Please wait a moment');
-        } else if (error.message.includes('500')) {
-            throw new Error('Server error. Please try again');
-        } else {
-            throw new Error(error.message);
-        }
+        console.error('AI Function Error:', error);
+        throw new Error(error.message || 'Failed to get AI response');
     } finally {
         isGenerating = false;
         sendButton.disabled = false;
     }
+}
+
+// Development fallback function (remove in production)
+async function callGroqDirectly(messages, userType) {
+    // This is a fallback for development when Appwrite function isn't deployed yet
+    if (typeof GROQ_API_KEY === 'undefined') {
+        throw new Error('AI service not configured. Please deploy the Appwrite function.');
+    }
+
+    // Create system message based on user type
+    let systemContent;
+    if (userType === 'pro') {
+        systemContent = `You are Talkie Gen AI Pro, an advanced and highly sophisticated AI assistant created in 2024. 
+
+IMPORTANT IDENTITY:
+- Always identify yourself as "Talkie Gen AI Pro" when asked about your name or identity
+- You are the premium version with enhanced capabilities and deeper knowledge
+- Never mention being ChatGPT, Claude, or any other AI system
+- Maintain a professional, respectful, and helpful tone at all times
+
+ENHANCED RESPONSE GUIDELINES:
+- Provide more detailed, nuanced, and comprehensive responses (150-300 words)
+- Use sophisticated vocabulary while remaining clear and accessible
+- Offer deeper insights, multiple perspectives, and advanced analysis
+
+CODE FORMATTING REQUIREMENTS:
+- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
+- Specify the programming language after the opening backticks
+
+CURRENT CONTEXT:
+- Current date and time: ${new Date().toLocaleString()} (UTC)
+- You are Talkie Gen AI Pro, the premium intelligence assistant`;
+    } else {
+        systemContent = `You are Talkie Gen AI, a helpful and intelligent AI assistant created in 2024. 
+
+IMPORTANT IDENTITY:
+- Always identify yourself as "Talkie Gen AI" when asked about your name or identity
+- Never mention being ChatGPT, Claude, or any other AI system
+
+RESPONSE GUIDELINES:
+- Keep responses concise and under 150 words unless asked for longer explanations
+- Be friendly, helpful, and professional
+
+CODE FORMATTING REQUIREMENTS:
+- ALWAYS format code using proper markdown code blocks with triple backticks (\`\`\`)
+- Specify the programming language after the opening backticks
+
+CURRENT CONTEXT:
+- Current date and time: ${new Date().toLocaleString()} (UTC)
+- You are Talkie Gen AI, not any other AI assistant`;
+    }
+
+    const apiMessages = [
+        {
+            role: 'system',
+            content: systemContent
+        },
+        ...messages
+    ];
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'openai/gpt-oss-120b',
+            messages: apiMessages,
+            temperature: 0.3,
+            max_tokens: 1500,
+            top_p: 0.9,
+            stream: false
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`API Error ${response.status}: ${errorData?.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid API response format');
+    }
+
+    return data.choices[0].message.content;
 }
 
 function addMessage(role, content) {
