@@ -2873,3 +2873,195 @@ textarea:focus-visible {
         justify-content: center;
     }
 }
+
+/* Google Auth Styles */
+.google-auth-section {
+    margin-bottom: 24px;
+}
+
+.google-signin-btn {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.auth-divider {
+    position: relative;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.auth-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border-light);
+}
+
+.auth-divider span {
+    background: var(--bg-primary);
+    padding: 0 16px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+/* Admin Management Styles */
+.user-management-panel {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.user-search {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.user-search input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.search-btn {
+    padding: 12px 20px;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.search-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.user-card {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-light);
+}
+
+.user-info h4 {
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.user-info p {
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.user-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.role-badge, .pro-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.role-badge {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.role-badge.owner {
+    background: var(--gradient-primary);
+}
+
+.role-badge.admin {
+    background: var(--gradient-secondary);
+}
+
+.pro-badge {
+    background: var(--gradient-success);
+    color: white;
+}
+
+.user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-action-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-action-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.admin-action-btn.danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.admin-action-btn.danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Owner Role Styles */
+.owner-badge {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 4px;
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+/* Enhanced Pro Badge */
+.pro-badge-enhanced {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 4px;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}

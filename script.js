@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
     initializeAuth();
     initializeAdmin(); // Initialize admin system
+    initializeGoogleAuth(); // Initialize Google OAuth
     trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
     initializeMemorySystem(); // Initialize enhanced memory system
@@ -116,6 +117,114 @@ document.addEventListener('DOMContentLoaded', () => {
     autoResizeTextarea();
 });
 
+// Google OAuth initialization
+function initializeGoogleAuth() {
+    if (typeof google !== 'undefined' && google.accounts) {
+        // Initialize Google Identity Services
+        google.accounts.id.initialize({
+            client_id: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Demo client ID
+            callback: handleGoogleSignIn,
+            auto_select: false,
+            cancel_on_tap_outside: true
+        });
+
+        // Render sign-in buttons
+        renderGoogleSignInButtons();
+    } else {
+        console.log('Google Identity Services not loaded');
+    }
+}
+
+function renderGoogleSignInButtons() {
+    // Render Google Sign-In button for login modal
+    const loginButton = document.getElementById('google-signin-login');
+    if (loginButton) {
+        google.accounts.id.renderButton(loginButton, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signin_with',
+            shape: 'rectangular'
+        });
+    }
+
+    // Render Google Sign-In button for signup modal
+    const signupButton = document.getElementById('google-signin-signup');
+    if (signupButton) {
+        google.accounts.id.renderButton(signupButton, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signup_with',
+            shape: 'rectangular'
+        });
+    }
+}
+
+function handleGoogleSignIn(response) {
+    try {
+        // Decode the JWT token
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        
+        const googleUser = {
+            email: payload.email,
+            name: payload.name,
+            profilePhoto: payload.picture,
+            googleId: payload.sub
+        };
+
+        // Check if user exists
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        
+        if (!users[googleUser.email]) {
+            // Create new user account
+            users[googleUser.email] = {
+                name: googleUser.name,
+                email: googleUser.email,
+                googleId: googleUser.googleId,
+                profilePhoto: googleUser.profilePhoto,
+                createdAt: new Date().toISOString(),
+                isPro: false,
+                isAdmin: false,
+                authProvider: 'google'
+            };
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+        } else {
+            // Update existing user with Google info
+            users[googleUser.email].googleId = googleUser.googleId;
+            users[googleUser.email].profilePhoto = googleUser.profilePhoto;
+            users[googleUser.email].authProvider = 'google';
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+        }
+
+        // Log in the user
+        currentUser = {
+            name: googleUser.name,
+            email: googleUser.email,
+            isPro: users[googleUser.email].isPro || false,
+            isAdmin: users[googleUser.email].isAdmin || false,
+            isOwner: users[googleUser.email].isOwner || false,
+            profilePhoto: googleUser.profilePhoto
+        };
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+
+        // Check for pending pro upgrade
+        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+            sessionStorage.removeItem('pendingProUpgrade');
+            upgradeToPro();
+        }
+
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome, ${googleUser.name}!`, 'success');
+
+    } catch (error) {
+        console.error('Google Sign-In error:', error);
+        showToast('Google Sign-In failed. Please try again.', 'error');
+    }
+}
+
 // Initialize admin system
 function initializeAdmin() {
     try {
@@ -123,50 +232,53 @@ function initializeAdmin() {
         const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         const adminEmail = 'coenyin9@gmail.com';
         
-        // Always ensure admin account exists with correct properties
+        // Always ensure admin account exists with correct properties - now as OWNER
         if (!users[adminEmail]) {
             const hashedPassword = hashPassword('Carronshore93');
             users[adminEmail] = {
-                name: 'Coen Admin',
+                name: 'Coen Yin',
                 email: adminEmail,
                 password: hashedPassword,
                 createdAt: new Date().toISOString(),
                 isPro: true,
                 isAdmin: true,
+                isOwner: true, // Owner role
                 profilePhoto: null
             };
             localStorage.setItem('talkie-users', JSON.stringify(users));
-            console.log('Admin account created successfully');
+            console.log('Owner account created successfully');
         } else {
             // Ensure existing admin account has all required properties
-            if (!users[adminEmail].isAdmin) {
+            if (!users[adminEmail].isOwner) {
+                users[adminEmail].isOwner = true;
                 users[adminEmail].isAdmin = true;
                 users[adminEmail].isPro = true;
                 localStorage.setItem('talkie-users', JSON.stringify(users));
-                console.log('Admin account permissions updated');
+                console.log('Owner account permissions updated');
             }
         }
     } catch (error) {
         console.error('Error initializing admin account:', error);
-        // Force create admin account as fallback
+        // Force create owner account as fallback
         try {
             const adminEmail = 'coenyin9@gmail.com';
             const hashedPassword = hashPassword('Carronshore93');
             const users = {
                 [adminEmail]: {
-                    name: 'Coen Admin',
+                    name: 'Coen Yin',
                     email: adminEmail,
                     password: hashedPassword,
                     createdAt: new Date().toISOString(),
                     isPro: true,
                     isAdmin: true,
+                    isOwner: true,
                     profilePhoto: null
                 }
             };
             localStorage.setItem('talkie-users', JSON.stringify(users));
-            console.log('Admin account force-created as fallback');
+            console.log('Owner account force-created as fallback');
         } catch (fallbackError) {
-            console.error('Failed to create admin account fallback:', fallbackError);
+            console.error('Failed to create owner account fallback:', fallbackError);
         }
     }
 }
@@ -915,12 +1027,22 @@ function initializeAuth() {
 function updateUserInterface() {
     if (currentUser) {
         // User is logged in
-        const displayName = currentUser.name + (currentUser.isPro ? ' Pro' : '') + (currentUser.isAdmin ? ' Admin' : '');
-        displayUsername.innerHTML = currentUser.isPro ? 
-            `${currentUser.name} <span class="pro-badge">${currentUser.isAdmin ? 'Admin' : 'Pro'}</span>` : 
-            currentUser.name;
+        let displayName = currentUser.name;
+        let roleText = 'Online';
         
-        userStatus.textContent = currentUser.isAdmin ? 'Administrator' : 'Online';
+        if (currentUser.isOwner) {
+            displayName += ' <span class="owner-badge">Owner</span>';
+            roleText = 'Owner';
+        } else if (currentUser.isAdmin) {
+            displayName += ' <span class="pro-badge-enhanced">Admin</span>';
+            roleText = 'Administrator';
+        } else if (currentUser.isPro) {
+            displayName += ' <span class="pro-badge-enhanced">Pro</span>';
+            roleText = 'Pro User';
+        }
+        
+        displayUsername.innerHTML = displayName;
+        userStatus.textContent = roleText;
         
         // Set user avatar - either custom photo or initials
         if (currentUser.profilePhoto) {
@@ -929,12 +1051,12 @@ function updateUserInterface() {
             userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
         }
         
-        // Show user menu items - Profile only for Pro users, Admin panel for admins
-        profileBtn.style.display = currentUser.isPro ? 'flex' : 'none';
+        // Show user menu items - Profile only for Pro users, Admin panel for admins/owner
+        profileBtn.style.display = currentUser.isPro || currentUser.isAdmin || currentUser.isOwner ? 'flex' : 'none';
         
-        // Show admin button for admin users
+        // Show admin button for admin users and owner
         const adminBtn = document.getElementById('adminBtn');
-        if (adminBtn && currentUser.isAdmin) {
+        if (adminBtn && (currentUser.isAdmin || currentUser.isOwner)) {
             adminBtn.style.display = 'flex';
         } else if (adminBtn) {
             adminBtn.style.display = 'none';
@@ -1045,7 +1167,7 @@ function handleSignup(event) {
     localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
     
     // Log in the user
-    currentUser = { name, email, isPro: false, isAdmin: false, profilePhoto: null };
+    currentUser = { name, email, isPro: false, isAdmin: false, isOwner: false, profilePhoto: null };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
     
     // Check for pending pro upgrade
@@ -1095,6 +1217,7 @@ function handleLogin(event) {
             email: user.email, 
             isPro: user.isPro || false,
             isAdmin: user.isAdmin || false,
+            isOwner: user.isOwner || false,
             profilePhoto: user.profilePhoto || null
         };
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
@@ -1174,6 +1297,9 @@ function setupEventListeners() {
     // Admin panel event listeners
     if (adminBtn) adminBtn.addEventListener('click', showAdminPanel);
     if (closeAdminModal) closeAdminModal.addEventListener('click', hideAdminPanel);
+    
+    // Admin user management event listeners
+    setupAdminUserManagement();
     
     // Profile management event listeners
     profileBtn.addEventListener('click', showProfileModal);
@@ -1517,6 +1643,14 @@ async function getAIResponse(userMessage) {
     isGenerating = true;
     sendButton.disabled = true;
 
+    // Check for special AI commands first
+    const commandResponse = checkAICommands(userMessage);
+    if (commandResponse) {
+        isGenerating = false;
+        sendButton.disabled = false;
+        return commandResponse;
+    }
+
     const chat = chats[currentChatId];
     
     // Use enhanced context management
@@ -1698,6 +1832,83 @@ CURRENT CONTEXT:
     } finally {
         isGenerating = false;
         sendButton.disabled = false;
+    }
+}
+
+// AI Command Recognition System
+function checkAICommands(userMessage) {
+    if (!currentUser) return null;
+    
+    const message = userMessage.toLowerCase().trim();
+    
+    // Pro upgrade commands
+    const proCommands = [
+        'upgrade me to pro',
+        'make me pro',
+        'i want pro',
+        'activate pro',
+        'enable pro features',
+        'upgrade to pro',
+        'give me pro access'
+    ];
+    
+    // Admin promotion commands (only for owner)
+    const adminCommands = [
+        'make me admin',
+        'promote me to admin',
+        'give me admin access',
+        'i want admin privileges'
+    ];
+    
+    // Check for pro upgrade commands
+    if (proCommands.some(cmd => message.includes(cmd))) {
+        if (currentUser.isPro) {
+            return "You already have Pro access! 🎉 You can enjoy all Pro features including enhanced responses, advanced memory, and exclusive themes.";
+        } else {
+            return upgradeUserToPro();
+        }
+    }
+    
+    // Check for admin promotion commands (only owner can promote to admin)
+    if (adminCommands.some(cmd => message.includes(cmd))) {
+        if (currentUser.isOwner) {
+            return "You're already the Owner! You have the highest level of access. 👑";
+        } else if (currentUser.isAdmin) {
+            return "You already have Admin privileges! You can manage users and access the admin panel.";
+        } else {
+            return "I can't promote you to admin. Only the site owner can grant admin privileges. You can ask the owner for admin access if needed.";
+        }
+    }
+    
+    return null; // No command recognized
+}
+
+// Upgrade user to Pro via AI command
+function upgradeUserToPro() {
+    try {
+        // Update user data
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        if (users[currentUser.email]) {
+            users[currentUser.email].isPro = true;
+            users[currentUser.email].proUpgradeDate = new Date().toISOString();
+            users[currentUser.email].proUpgradeMethod = 'ai_command';
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+        }
+        
+        // Update current user session
+        currentUser.isPro = true;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Update UI
+        updateUserInterface();
+        initializeTheme(); // Refresh theme options
+        
+        showToast('🎉 Welcome to Talkie Gen Pro! You now have access to exclusive features.', 'success');
+        
+        return "🎉 Congratulations! You've been upgraded to **Talkie Gen Pro**! \n\nYou now have access to:\n\n✨ **Enhanced AI Responses** - More detailed and comprehensive answers\n🧠 **Advanced Memory** - Better conversation context and personalization\n🎨 **Exclusive Pro Theme** - Premium dark theme with golden accents\n📝 **Profile Customization** - Upload profile photos and customize settings\n🚀 **Priority Features** - Access to new features first\n\nEnjoy your Pro experience! You can now access the Pro theme in your settings and customize your profile.";
+    } catch (error) {
+        console.error('Error upgrading to Pro:', error);
+        return "I encountered an error while upgrading your account. Please try refreshing the page and try again.";
     }
 }
 
@@ -2487,6 +2698,223 @@ function loadAdminStats() {
     }
 }
 
+// Admin User Management Functions
+function setupAdminUserManagement() {
+    const searchUserBtn = document.getElementById('searchUserBtn');
+    const userSearchInput = document.getElementById('userSearchInput');
+    const toggleProBtn = document.getElementById('toggleProBtn');
+    const toggleAdminBtn = document.getElementById('toggleAdminBtn');
+    const deleteUserBtn = document.getElementById('deleteUserBtn');
+    
+    if (searchUserBtn) {
+        searchUserBtn.addEventListener('click', searchUser);
+    }
+    
+    if (userSearchInput) {
+        userSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchUser();
+            }
+        });
+    }
+    
+    if (toggleProBtn) {
+        toggleProBtn.addEventListener('click', toggleUserPro);
+    }
+    
+    if (toggleAdminBtn) {
+        toggleAdminBtn.addEventListener('click', toggleUserAdmin);
+    }
+    
+    if (deleteUserBtn) {
+        deleteUserBtn.addEventListener('click', deleteUser);
+    }
+}
+
+let selectedUserEmail = null;
+
+function searchUser() {
+    const email = document.getElementById('userSearchInput').value.trim();
+    if (!email) {
+        showToast('Please enter an email address', 'warning');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[email];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        document.getElementById('userDetails').style.display = 'none';
+        return;
+    }
+    
+    selectedUserEmail = email;
+    displayUserDetails(user);
+}
+
+function displayUserDetails(user) {
+    document.getElementById('selectedUserName').textContent = user.name;
+    document.getElementById('selectedUserEmail').textContent = user.email;
+    
+    const roleElement = document.getElementById('selectedUserRole');
+    const proElement = document.getElementById('selectedUserPro');
+    
+    // Set role badge
+    if (user.isOwner) {
+        roleElement.textContent = 'Owner';
+        roleElement.className = 'role-badge owner';
+    } else if (user.isAdmin) {
+        roleElement.textContent = 'Admin';
+        roleElement.className = 'role-badge admin';
+    } else {
+        roleElement.textContent = 'Regular';
+        roleElement.className = 'role-badge';
+    }
+    
+    // Set pro badge
+    if (user.isPro) {
+        proElement.style.display = 'inline-block';
+        proElement.textContent = 'Pro';
+    } else {
+        proElement.style.display = 'none';
+    }
+    
+    // Update button states
+    document.getElementById('toggleProBtn').textContent = user.isPro ? 'Remove Pro' : 'Grant Pro';
+    document.getElementById('toggleAdminBtn').textContent = user.isAdmin ? 'Remove Admin' : 'Grant Admin';
+    
+    // Disable admin toggle for owner
+    const adminBtn = document.getElementById('toggleAdminBtn');
+    if (user.isOwner) {
+        adminBtn.disabled = true;
+        adminBtn.textContent = 'Owner (Cannot Change)';
+    } else {
+        adminBtn.disabled = false;
+    }
+    
+    // Disable delete for owner and current user
+    const deleteBtn = document.getElementById('deleteUserBtn');
+    if (user.isOwner || selectedUserEmail === currentUser?.email) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = user.isOwner ? 'Owner (Cannot Delete)' : 'You (Cannot Delete)';
+    } else {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = 'Delete User';
+    }
+    
+    document.getElementById('userDetails').style.display = 'block';
+}
+
+function toggleUserPro() {
+    if (!selectedUserEmail) return;
+    
+    if (!currentUser?.isOwner && !currentUser?.isAdmin) {
+        showToast('You do not have permission to modify user accounts', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserEmail];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    user.isPro = !user.isPro;
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    // Update current user if it's the same
+    if (selectedUserEmail === currentUser?.email) {
+        currentUser.isPro = user.isPro;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        updateUserInterface();
+    }
+    
+    displayUserDetails(user);
+    showToast(`${user.isPro ? 'Granted' : 'Removed'} Pro access for ${user.name}`, 'success');
+}
+
+function toggleUserAdmin() {
+    if (!selectedUserEmail) return;
+    
+    if (!currentUser?.isOwner) {
+        showToast('Only the owner can grant or remove admin privileges', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserEmail];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    if (user.isOwner) {
+        showToast('Cannot modify owner privileges', 'error');
+        return;
+    }
+    
+    user.isAdmin = !user.isAdmin;
+    // Grant Pro access when making admin
+    if (user.isAdmin && !user.isPro) {
+        user.isPro = true;
+    }
+    
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    // Update current user if it's the same
+    if (selectedUserEmail === currentUser?.email) {
+        currentUser.isAdmin = user.isAdmin;
+        currentUser.isPro = user.isPro;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        updateUserInterface();
+    }
+    
+    displayUserDetails(user);
+    showToast(`${user.isAdmin ? 'Granted' : 'Removed'} admin privileges for ${user.name}`, 'success');
+}
+
+function deleteUser() {
+    if (!selectedUserEmail) return;
+    
+    if (!currentUser?.isOwner && !currentUser?.isAdmin) {
+        showToast('You do not have permission to delete user accounts', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserEmail];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    if (user.isOwner) {
+        showToast('Cannot delete the owner account', 'error');
+        return;
+    }
+    
+    if (selectedUserEmail === currentUser?.email) {
+        showToast('Cannot delete your own account', 'error');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete ${user.name}'s account? This action cannot be undone.`)) {
+        delete users[selectedUserEmail];
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        
+        document.getElementById('userDetails').style.display = 'none';
+        document.getElementById('userSearchInput').value = '';
+        selectedUserEmail = null;
+        
+        showToast(`Deleted ${user.name}'s account`, 'success');
+    }
+}
+
 // Share Modal Functions
 function showShareModal() {
     shareModalOverlay.classList.add('active');
@@ -2620,6 +3048,14 @@ function loadDocumentationContent() {
                     <i class="fas fa-star"></i>
                     <span>Features</span>
                 </div>
+                <div class="docs-nav-item" data-section="authentication">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Authentication</span>
+                </div>
+                <div class="docs-nav-item" data-section="ai-commands">
+                    <i class="fas fa-magic"></i>
+                    <span>AI Commands</span>
+                </div>
                 <div class="docs-nav-item" data-section="search-tools">
                     <i class="fas fa-search"></i>
                     <span>Search & Tools</span>
@@ -2712,6 +3148,101 @@ function loadDocumentationContent() {
                         <li>Export conversations</li>
                         <li>Delete individual chats or clear all</li>
                     </ul>
+                </div>
+                
+                <div class="docs-section" id="authentication">
+                    <h2>🔐 Authentication & Accounts</h2>
+                    
+                    <h3>Sign Up Options</h3>
+                    <p>Talkie Gen AI offers multiple ways to create an account:</p>
+                    <ul>
+                        <li><strong>🔓 Email & Password</strong> - Traditional account creation with email verification</li>
+                        <li><strong>🔴 Google Sign-In</strong> - Quick and secure authentication using your Google account</li>
+                    </ul>
+                    
+                    <h3>Account Benefits</h3>
+                    <p>Creating an account unlocks additional features:</p>
+                    <ul>
+                        <li>💾 <strong>Persistent Chat History</strong> - Your conversations are saved across sessions</li>
+                        <li>⚙️ <strong>Custom Settings</strong> - Personalized AI behavior and preferences</li>
+                        <li>🧠 <strong>Memory System</strong> - AI remembers your interests and preferences</li>
+                        <li>📱 <strong>Cross-Device Sync</strong> - Access your chats from any device</li>
+                        <li>🎨 <strong>Profile Customization</strong> - Upload profile photos and customize your experience</li>
+                    </ul>
+                    
+                    <h3>User Roles</h3>
+                    <ul>
+                        <li><strong>👤 Regular User</strong> - Standard features and functionality</li>
+                        <li><strong>⭐ Pro User</strong> - Enhanced features, advanced memory, and exclusive themes</li>
+                        <li><strong>🛡️ Admin</strong> - User management and admin panel access</li>
+                        <li><strong>👑 Owner</strong> - Full system control and user promotion capabilities</li>
+                    </ul>
+                    
+                    <h3>Google Sign-In</h3>
+                    <p>Sign in with Google for a fast and secure experience:</p>
+                    <ul>
+                        <li>🚀 <strong>One-Click Access</strong> - No need to remember another password</li>
+                        <li>🔒 <strong>Secure</strong> - Uses Google's robust authentication system</li>
+                        <li>📸 <strong>Auto Profile</strong> - Your Google profile photo is automatically imported</li>
+                        <li>✅ <strong>Verified Email</strong> - Your Google email is pre-verified</li>
+                    </ul>
+                    
+                    <div class="docs-tip">
+                        <i class="fas fa-shield-alt"></i>
+                        <strong>Security:</strong> Your Google credentials are never stored on our servers. Authentication is handled entirely by Google's secure OAuth system.
+                    </div>
+                </div>
+                
+                <div class="docs-section" id="ai-commands">
+                    <h2>🪄 AI Commands & Upgrades</h2>
+                    
+                    <h3>Special AI Commands</h3>
+                    <p>Talkie Gen AI recognizes special commands that you can use in conversation to unlock features:</p>
+                    
+                    <h4>Pro Upgrade Commands</h4>
+                    <p>Use these phrases to upgrade your account to Pro instantly:</p>
+                    <ul>
+                        <li><code>"upgrade me to pro"</code></li>
+                        <li><code>"make me pro"</code></li>
+                        <li><code>"i want pro"</code></li>
+                        <li><code>"activate pro"</code></li>
+                        <li><code>"enable pro features"</code></li>
+                        <li><code>"give me pro access"</code></li>
+                    </ul>
+                    
+                    <h4>What Happens When You Upgrade</h4>
+                    <p>When you use a Pro upgrade command, the AI will:</p>
+                    <ol>
+                        <li>✅ Instantly upgrade your account to Pro status</li>
+                        <li>🎉 Show you a congratulations message with Pro features</li>
+                        <li>🔄 Refresh the interface to show Pro features</li>
+                        <li>🎨 Enable access to the exclusive Pro theme</li>
+                        <li>📸 Allow profile photo uploads and customization</li>
+                    </ol>
+                    
+                    <h3>Pro Features Unlocked</h3>
+                    <p>Once upgraded to Pro, you get immediate access to:</p>
+                    <ul>
+                        <li>🤖 <strong>Enhanced AI Responses</strong> - More detailed and comprehensive answers</li>
+                        <li>🧠 <strong>Advanced Memory System</strong> - Better context and personalization</li>
+                        <li>🎨 <strong>Exclusive Pro Theme</strong> - Beautiful dark theme with golden accents</li>
+                        <li>📸 <strong>Profile Customization</strong> - Upload custom profile photos</li>
+                        <li>⚙️ <strong>Advanced Settings</strong> - More customization options</li>
+                        <li>🚀 <strong>Priority Features</strong> - Early access to new capabilities</li>
+                    </ul>
+                    
+                    <h3>Admin Commands</h3>
+                    <p>Admin promotion requires owner approval and cannot be done through AI commands. Only the site owner can grant admin privileges through the admin panel.</p>
+                    
+                    <div class="docs-upgrade">
+                        <i class="fas fa-magic"></i>
+                        <strong>Try it now:</strong> Just say "upgrade me to pro" in a conversation to instantly unlock Pro features!
+                    </div>
+                    
+                    <div class="docs-tip">
+                        <i class="fas fa-star"></i>
+                        <strong>No URL Required:</strong> Unlike other systems, you don't need special URLs or codes. Just ask the AI naturally!
+                    </div>
                 </div>
                 
                 <div class="docs-section" id="search-tools">

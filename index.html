@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Sign-In API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <!-- Main Container -->
@@ -301,6 +304,45 @@
                 </div>
                 
                 <div class="admin-section">
+                    <h3>User Management</h3>
+                    <div class="user-management-panel">
+                        <div class="user-search">
+                            <input type="email" id="userSearchInput" placeholder="Enter user email to manage..." />
+                            <button id="searchUserBtn" class="search-btn">
+                                <i class="fas fa-search"></i>
+                                Search
+                            </button>
+                        </div>
+                        <div class="user-details" id="userDetails" style="display: none;">
+                            <div class="user-card">
+                                <div class="user-info">
+                                    <h4 id="selectedUserName">User Name</h4>
+                                    <p id="selectedUserEmail">user@example.com</p>
+                                    <div class="user-badges">
+                                        <span id="selectedUserRole" class="role-badge">Regular</span>
+                                        <span id="selectedUserPro" class="pro-badge" style="display: none;">Pro</span>
+                                    </div>
+                                </div>
+                                <div class="user-actions">
+                                    <button id="toggleProBtn" class="admin-action-btn">
+                                        <i class="fas fa-crown"></i>
+                                        Toggle Pro
+                                    </button>
+                                    <button id="toggleAdminBtn" class="admin-action-btn">
+                                        <i class="fas fa-shield-alt"></i>
+                                        Toggle Admin
+                                    </button>
+                                    <button id="deleteUserBtn" class="admin-action-btn danger">
+                                        <i class="fas fa-trash"></i>
+                                        Delete User
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-section">
                     <h3>Recent Activity</h3>
                     <div class="activity-list" id="activityList">
                         <!-- Recent activity will be populated here -->
@@ -436,6 +478,12 @@
                 <p>Sign in to your account</p>
                 <button class="modal-close" id="closeLoginModal">&times;</button>
             </div>
+            <div class="google-auth-section">
+                <div id="google-signin-login" class="google-signin-btn"></div>
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+            </div>
             <form class="auth-form" id="loginForm">
                 <div class="form-group">
                     <label for="loginEmail">Email</label>
@@ -458,6 +506,12 @@
                 <h2>Create account</h2>
                 <p>Join Talkie Gen AI today</p>
                 <button class="modal-close" id="closeSignupModal">&times;</button>
+            </div>
+            <div class="google-auth-section">
+                <div id="google-signin-signup" class="google-signin-btn"></div>
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
             </div>
             <form class="auth-form" id="signupForm">
                 <div class="form-group">
