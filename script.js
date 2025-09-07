@@ -984,7 +984,18 @@ function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     let newTheme;
     
-    if (currentUser && currentUser.isPro) {
+    if (currentUser && currentUser.isOwner) {
+        // Owner can cycle through light -> dark -> pro -> owner
+        if (currentTheme === 'light') {
+            newTheme = 'dark';
+        } else if (currentTheme === 'dark') {
+            newTheme = 'pro';
+        } else if (currentTheme === 'pro') {
+            newTheme = 'owner';
+        } else {
+            newTheme = 'light';
+        }
+    } else if (currentUser && currentUser.isPro) {
         // Pro users can cycle through light -> dark -> pro
         if (currentTheme === 'light') {
             newTheme = 'dark';
@@ -1009,9 +1020,18 @@ function updateThemeToggle(theme) {
     
     if (theme === 'dark') {
         icon.className = 'fas fa-palette';
-        text.textContent = currentUser && currentUser.isPro ? 'Pro mode' : 'Light mode';
+        if (currentUser && currentUser.isOwner) {
+            text.textContent = 'Pro mode';
+        } else if (currentUser && currentUser.isPro) {
+            text.textContent = 'Pro mode';
+        } else {
+            text.textContent = 'Light mode';
+        }
     } else if (theme === 'pro') {
         icon.className = 'fas fa-crown';
+        text.textContent = currentUser && currentUser.isOwner ? 'Owner mode' : 'Light mode';
+    } else if (theme === 'owner') {
+        icon.className = 'fas fa-diamond';
         text.textContent = 'Light mode';
     } else {
         icon.className = 'fas fa-moon';
@@ -1855,9 +1875,19 @@ function checkAICommands(userMessage) {
     // Admin promotion commands (only for owner)
     const adminCommands = [
         'make me admin',
-        'promote me to admin',
+        'promote me to admin', 
         'give me admin access',
         'i want admin privileges'
+    ];
+
+    // Admin promotion patterns for promoting others (owner only)
+    const adminPromotionPatterns = [
+        /make (.+) admin/i,
+        /promote (.+) to admin/i,
+        /give (.+) admin access/i,
+        /grant (.+) admin privileges/i,
+        /upgrade (.+) to admin/i,
+        /make admin (.+)/i
     ];
     
     // Check for pro upgrade commands
@@ -1869,7 +1899,24 @@ function checkAICommands(userMessage) {
         }
     }
     
-    // Check for admin promotion commands (only owner can promote to admin)
+    // Check for admin promotion commands for other users (owner only)
+    let adminPromotionMatch = null;
+    for (const pattern of adminPromotionPatterns) {
+        const match = userMessage.match(pattern);
+        if (match) {
+            adminPromotionMatch = match;
+            break;
+        }
+    }
+    
+    if (adminPromotionMatch && currentUser.isOwner) {
+        const targetEmail = adminPromotionMatch[1].trim();
+        return promoteUserToAdminViaAI(targetEmail);
+    } else if (adminPromotionMatch && !currentUser.isOwner) {
+        return "🚫 **Access Denied** - Only the site owner can grant administrator privileges. Admin promotion commands are restricted to the owner account for security purposes.";
+    }
+    
+    // Check for self admin promotion commands (only owner can promote to admin)
     if (adminCommands.some(cmd => message.includes(cmd))) {
         if (currentUser.isOwner) {
             return "You're already the Owner! You have the highest level of access. 👑";
@@ -1909,6 +1956,87 @@ function upgradeUserToPro() {
     } catch (error) {
         console.error('Error upgrading to Pro:', error);
         return "I encountered an error while upgrading your account. Please try refreshing the page and try again.";
+    }
+}
+
+// Promote user to Admin via AI command (owner only)
+function promoteUserToAdminViaAI(targetEmail) {
+    try {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(targetEmail)) {
+            return `❌ **Invalid Email Format**
+
+"${targetEmail}" is not a valid email address. Please provide the user's registered email address for admin promotion.
+
+**Example commands:**
+- "make user@example.com admin"
+- "promote john@email.com to admin"
+- "give admin access to sarah@domain.com"`;
+        }
+        
+        // Check if user exists
+        if (!users[targetEmail]) {
+            return `❌ **User Not Found**
+
+No registered user found with email address: **${targetEmail}**
+
+The user must have a registered account before they can be promoted to admin. Ask them to sign up first, then try the promotion command again.`;
+        }
+        
+        const targetUser = users[targetEmail];
+        
+        // Check if already admin
+        if (targetUser.isAdmin) {
+            return `ℹ️ **Already Admin**
+
+User **${targetUser.name}** (${targetEmail}) already has administrator privileges.
+
+Current status: ${targetUser.isOwner ? 'Owner' : 'Administrator'}`;
+        }
+        
+        // Check if owner (can't promote owner)
+        if (targetUser.isOwner) {
+            return `👑 **Cannot Promote Owner**
+
+User **${targetUser.name}** is already the site owner, which is the highest privilege level.`;
+        }
+        
+        // Promote to admin
+        targetUser.isAdmin = true;
+        targetUser.adminPromotedDate = new Date().toISOString();
+        targetUser.adminPromotedBy = currentUser.email;
+        
+        // Grant Pro access if not already Pro
+        if (!targetUser.isPro) {
+            targetUser.isPro = true;
+            targetUser.proUpgradeDate = new Date().toISOString();
+            targetUser.proUpgradeMethod = 'admin_promotion';
+        }
+        
+        // Save changes
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        
+        showToast(`🛡️ User ${targetUser.name} promoted to Administrator!`, 'success');
+        
+        return `🛡️ **Admin Promotion Successful!**
+
+User **${targetUser.name}** (${targetEmail}) has been promoted to Administrator!
+
+**Admin Privileges Granted:**
+🔧 Access to Admin Dashboard
+👥 User management capabilities  
+📊 System statistics and analytics
+🛡️ Administrative controls
+⭐ Automatic Pro features included
+
+The user will see their new admin status the next time they log in.`;
+        
+    } catch (error) {
+        console.error('Error promoting user to admin:', error);
+        return "Sorry, there was an error promoting the user to admin. Please try again or use the admin panel for user management.";
     }
 }
 
@@ -3232,7 +3360,37 @@ function loadDocumentationContent() {
                     </ul>
                     
                     <h3>Admin Commands</h3>
-                    <p>Admin promotion requires owner approval and cannot be done through AI commands. Only the site owner can grant admin privileges through the admin panel.</p>
+                    <p>Admin promotion is available through AI commands for the site owner:</p>
+                    
+                    <h4>Admin Promotion Commands (Owner Only)</h4>
+                    <p>The site owner can promote users to admin using these natural language commands:</p>
+                    <ul>
+                        <li><code>"make user@example.com admin"</code></li>
+                        <li><code>"promote john@email.com to admin"</code></li>
+                        <li><code>"give admin access to sarah@domain.com"</code></li>
+                        <li><code>"grant admin privileges to alex@company.com"</code></li>
+                        <li><code>"upgrade support@team.com to admin"</code></li>
+                    </ul>
+                    
+                    <h4>How Admin Promotion Works</h4>
+                    <p>When the owner uses an admin promotion command:</p>
+                    <ol>
+                        <li>🔍 The system validates the email address format</li>
+                        <li>👤 Checks if the user has a registered account</li>
+                        <li>🛡️ Promotes the user to administrator role</li>
+                        <li>⭐ Automatically grants Pro features</li>
+                        <li>📧 Records the promotion in user data</li>
+                        <li>✅ Confirms successful promotion</li>
+                    </ol>
+                    
+                    <h4>Owner Exclusive Features</h4>
+                    <p>The site owner has access to exclusive features:</p>
+                    <ul>
+                        <li>🎨 <strong>Owner Theme</strong> - Exclusive colorful theme with special animations</li>
+                        <li>👥 <strong>Admin Promotion</strong> - Ability to promote users via AI commands</li>
+                        <li>🛡️ <strong>Full User Management</strong> - Complete control over all user accounts</li>
+                        <li>⚙️ <strong>System Control</strong> - Access to all administrative functions</li>
+                    </ul>
                     
                     <div class="docs-upgrade">
                         <i class="fas fa-magic"></i>
@@ -3304,7 +3462,8 @@ function loadDocumentationContent() {
                     <ul>
                         <li><strong>Light Mode:</strong> Clean, bright interface</li>
                         <li><strong>Dark Mode:</strong> Easy on the eyes for low-light environments</li>
-                        <li><strong>Pro Mode:</strong> Exclusive theme for Pro users</li>
+                        <li><strong>Pro Mode:</strong> Exclusive golden theme for Pro users</li>
+                        <li><strong>Owner Mode:</strong> Special colorful theme exclusive to the site owner</li>
                     </ul>
                 </div>
                 
