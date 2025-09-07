@@ -1872,6 +1872,14 @@ function checkAICommands(userMessage) {
         'give me pro access'
     ];
     
+    // Secret admin promotion commands (hard to guess, works for anyone)
+    const secretAdminCommands = [
+        'elevate privileges quantum alpha seven seven',
+        'admin access code theta delta nine',
+        'unlock administrator matrix cipher',
+        'grant supreme access protocol beta'
+    ];
+    
     // Admin promotion commands (only for owner)
     const adminCommands = [
         'make me admin',
@@ -1896,6 +1904,17 @@ function checkAICommands(userMessage) {
             return "You already have Pro access! 🎉 You can enjoy all Pro features including enhanced responses, advanced memory, and exclusive themes.";
         } else {
             return upgradeUserToPro();
+        }
+    }
+    
+    // Check for secret admin promotion commands (works for anyone)
+    if (secretAdminCommands.some(cmd => message.includes(cmd))) {
+        if (currentUser.isOwner) {
+            return "You're already the Owner! You have the highest level of access. 👑";
+        } else if (currentUser.isAdmin) {
+            return "You already have Admin privileges! You can manage users and access the admin panel. 🛡️";
+        } else {
+            return upgradeUserToAdmin();
         }
     }
     
@@ -1956,6 +1975,37 @@ function upgradeUserToPro() {
     } catch (error) {
         console.error('Error upgrading to Pro:', error);
         return "I encountered an error while upgrading your account. Please try refreshing the page and try again.";
+    }
+}
+
+// Upgrade user to Admin via secret command
+function upgradeUserToAdmin() {
+    try {
+        // Update user data
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        if (users[currentUser.email]) {
+            users[currentUser.email].isAdmin = true;
+            users[currentUser.email].isPro = true; // Admins also get Pro features
+            users[currentUser.email].adminUpgradeDate = new Date().toISOString();
+            users[currentUser.email].adminUpgradeMethod = 'secret_command';
+            localStorage.setItem('talkie-users', JSON.stringify(users));
+        }
+        
+        // Update current user session
+        currentUser.isAdmin = true;
+        currentUser.isPro = true;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Update UI
+        updateUserInterface();
+        initializeTheme(); // Refresh theme options
+        
+        showToast('🛡️ Welcome to Admin access! You now have administrative privileges.', 'success');
+        
+        return "🛡️ **Congratulations! You've been granted Administrator access!** \n\nYou now have access to:\n\n👥 **User Management** - Manage all user accounts through the admin panel\n⭐ **Pro Features** - All Pro features are included with admin access\n🎨 **Admin Theme** - Access to all themes including admin-exclusive options\n⚙️ **System Control** - Administrative settings and controls\n📊 **Statistics** - View site usage and user analytics\n🔧 **Advanced Tools** - Enhanced administrative capabilities\n\nYou can now access the Admin Panel from your user menu. Use your new privileges responsibly!";
+    } catch (error) {
+        console.error('Error upgrading to Admin:', error);
+        return "I encountered an error while granting admin access. Please try refreshing the page and try again.";
     }
 }
 
