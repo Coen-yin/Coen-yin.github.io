@@ -2,22 +2,21 @@
 const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// Firebase Configuration for cross-device data sync
-const firebaseConfig = {
-    apiKey: "AIzaSyDemoKey123456789",
-    authDomain: "talkiegen-demo.firebaseapp.com", 
-    databaseURL: "https://talkiegen-demo-default-rtdb.firebaseio.com",
-    projectId: "talkiegen-demo",
-    storageBucket: "talkiegen-demo.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:demo123456789"
-};
+// Appwrite Configuration
+const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
+const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
 
-// Firebase app instance (will be initialized after Firebase loads)
-let firebaseApp = null;
-let firebaseDB = null;
-let firebaseAuth = null;
-let isFirebaseReady = false;
+// Appwrite instances
+let appwrite = null;
+let account = null;
+let databases = null;
+let isAppwriteReady = false;
+
+// Database and Collection IDs
+const DATABASE_ID = 'talkie-gen-db';
+const USERS_COLLECTION_ID = 'users';
+const CHATS_COLLECTION_ID = 'chats';
+const STATS_COLLECTION_ID = 'stats';
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -126,7 +125,7 @@ let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
-    initializeFirebase(); // Initialize Firebase first
+    initializeAppwrite(); // Initialize Appwrite first
     initializeTheme();
     initializeAuth();
     initializeAdmin(); // Initialize admin system
@@ -139,78 +138,166 @@ document.addEventListener('DOMContentLoaded', () => {
     loadChatHistory();
     autoResizeTextarea();
     
-    // Wait for Firebase before syncing
+    // Wait for Appwrite before syncing
     setTimeout(() => {
-        if (currentUser && isFirebaseReady) {
+        if (currentUser && isAppwriteReady) {
             syncUserDataFromCloud();
         }
     }, 2000);
 });
 
-// Firebase initialization
-function initializeFirebase() {
-    // Check if Firebase is loaded
-    if (typeof firebase === 'undefined') {
-        console.log('Firebase not loaded, using localStorage only');
+// Appwrite initialization
+function initializeAppwrite() {
+    // Check if Appwrite is loaded
+    if (typeof Appwrite === 'undefined') {
+        console.log('Appwrite SDK not loaded, using localStorage only');
         showToast('Running in offline mode - data will not sync across devices', 'info');
         return;
     }
     
     try {
-        // Initialize Firebase app
-        firebaseApp = firebase.initializeApp(firebaseConfig);
-        firebaseDB = firebase.database();
-        firebaseAuth = firebase.auth();
-        isFirebaseReady = true;
+        // Initialize Appwrite client
+        appwrite = new Appwrite.Client();
+        appwrite
+            .setEndpoint(APPWRITE_ENDPOINT)
+            .setProject(APPWRITE_PROJECT_ID);
+        
+        // Initialize services
+        account = new Appwrite.Account(appwrite);
+        databases = new Appwrite.Databases(appwrite);
+        
+        isAppwriteReady = true;
         isOnlineMode = true;
         
-        console.log('Firebase initialized successfully');
+        console.log('Appwrite initialized successfully');
         showToast('Cloud sync enabled - your data will sync across devices!', 'success');
         
-        // Set up real-time listeners
-        setupRealtimeListeners();
+        // Check if user is already logged in
+        checkCurrentSession();
         
     } catch (error) {
-        console.error('Firebase initialization failed:', error);
+        console.error('Appwrite initialization failed:', error);
         showToast('Cloud sync unavailable - using local storage only', 'warning');
-        isFirebaseReady = false;
+        isAppwriteReady = false;
         isOnlineMode = false;
     }
 }
 
-// Set up real-time listeners for data changes
-function setupRealtimeListeners() {
-    if (!isFirebaseReady || !currentUser) return;
+// Check current session
+async function checkCurrentSession() {
+    if (!isAppwriteReady) return;
     
-    const userRef = firebaseDB.ref(`users/${getUserId()}`);
-    
-    // Listen for user data changes
-    userRef.on('value', (snapshot) => {
-        if (snapshot.exists() && !pendingSync) {
-            const cloudData = snapshot.val();
-            handleCloudDataUpdate(cloudData);
+    try {
+        const session = await account.get();
+        if (session) {
+            // User is logged in, get their profile
+            await loadUserFromAppwrite(session);
         }
-    });
+    } catch (error) {
+        console.log('No active session found');
+        // Clear any local user data if session is invalid
+        currentUser = null;
+        localStorage.removeItem('talkie-user');
+        updateUserInterface();
+    }
 }
 
-// Get unique user ID for Firebase storage
-function getUserId() {
-    if (!currentUser) return null;
-    // Create a safe key from email
-    return currentUser.email.replace(/[.#$[\]]/g, '_');
+// Load user data from Appwrite
+async function loadUserFromAppwrite(session) {
+    try {
+        // Get user document from database
+        const userDoc = await databases.getDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            session.$id
+        );
+        
+        currentUser = {
+            id: session.$id,
+            name: userDoc.name || session.name,
+            email: session.email,
+            isPro: userDoc.isPro || false,
+            isAdmin: userDoc.isAdmin || false,
+            isOwner: userDoc.isOwner || false,
+            profilePhoto: userDoc.profilePhoto || null,
+            restrictions: userDoc.restrictions || {
+                maxChatsPerDay: 50,
+                maxMessagesPerChat: 100,
+                canExportData: true,
+                canUploadImages: true
+            }
+        };
+        
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        updateUserInterface();
+        initializeTheme();
+        
+        // Load user's data
+        await syncUserDataFromCloud();
+        
+    } catch (error) {
+        console.error('Error loading user from Appwrite:', error);
+        
+        // If user document doesn't exist, create it
+        if (error.code === 404) {
+            await createUserDocument(session);
+        }
+    }
 }
 
-// Sync user data to cloud
+// Create user document in Appwrite database
+async function createUserDocument(session) {
+    try {
+        const userData = {
+            name: session.name,
+            email: session.email,
+            isPro: false,
+            isAdmin: false,
+            isOwner: session.email === 'coenyin9@gmail.com', // Set owner for specific email
+            profilePhoto: null,
+            restrictions: {
+                maxChatsPerDay: 50,
+                maxMessagesPerChat: 100,
+                canExportData: true,
+                canUploadImages: true,
+                canAccessAdvancedSettings: true,
+                canUseVoiceInput: true
+            },
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString()
+        };
+        
+        await databases.createDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            session.$id,
+            userData
+        );
+        
+        console.log('User document created successfully');
+        
+        // Reload user data
+        await loadUserFromAppwrite(session);
+        
+    } catch (error) {
+        console.error('Error creating user document:', error);
+        
+        // If database doesn't exist, we'll handle it gracefully
+        if (error.code === 404) {
+            showToast('Database setup required. Please contact administrator.', 'warning');
+        }
+    }
+}
+
+// Sync user data to cloud (Appwrite)
 async function syncUserDataToCloud() {
-    if (!isFirebaseReady || !currentUser) return false;
+    if (!isAppwriteReady || !currentUser) return false;
     
     try {
         pendingSync = true;
-        const userId = getUserId();
         const timestamp = Date.now();
         
         const userData = {
-            profile: currentUser,
             chats: chats,
             memory: userMemory[currentUser.email] || {},
             settings: conversationSettings,
@@ -222,7 +309,31 @@ async function syncUserDataToCloud() {
             }
         };
         
-        await firebaseDB.ref(`users/${userId}`).set(userData);
+        // Create or update user data document
+        const userDataId = `data_${currentUser.id}`;
+        
+        try {
+            // Try to update existing document
+            await databases.updateDocument(
+                DATABASE_ID,
+                'user_data',
+                userDataId,
+                userData
+            );
+        } catch (error) {
+            if (error.code === 404) {
+                // Document doesn't exist, create it
+                await databases.createDocument(
+                    DATABASE_ID,
+                    'user_data',
+                    userDataId,
+                    userData
+                );
+            } else {
+                throw error;
+            }
+        }
+        
         localStorage.setItem('talkie-last-sync', timestamp.toString());
         lastSyncTime = timestamp.toString();
         pendingSync = false;
@@ -238,16 +349,20 @@ async function syncUserDataToCloud() {
     }
 }
 
-// Sync user data from cloud
+// Sync user data from cloud (Appwrite)
 async function syncUserDataFromCloud() {
-    if (!isFirebaseReady || !currentUser) return false;
+    if (!isAppwriteReady || !currentUser) return false;
     
     try {
-        const userId = getUserId();
-        const snapshot = await firebaseDB.ref(`users/${userId}`).once('value');
+        const userDataId = `data_${currentUser.id}`;
         
-        if (snapshot.exists()) {
-            const cloudData = snapshot.val();
+        try {
+            const cloudData = await databases.getDocument(
+                DATABASE_ID,
+                'user_data',
+                userDataId
+            );
+            
             const cloudTimestamp = cloudData.lastUpdated || 0;
             const localTimestamp = parseInt(lastSyncTime || '0');
             
@@ -261,11 +376,15 @@ async function syncUserDataFromCloud() {
                 await syncUserDataToCloud();
                 return true;
             }
-        } else {
-            // No cloud data exists, sync current data to cloud
-            await syncUserDataToCloud();
-            showToast('Data backed up to cloud!', 'success');
-            return true;
+        } catch (error) {
+            if (error.code === 404) {
+                // No cloud data exists, sync current data to cloud
+                await syncUserDataToCloud();
+                showToast('Data backed up to cloud!', 'success');
+                return true;
+            } else {
+                throw error;
+            }
         }
         
     } catch (error) {
@@ -321,7 +440,7 @@ function saveChats() {
     localStorage.setItem('talkie-chats', JSON.stringify(chats));
     
     // Trigger cloud sync if user is logged in
-    if (currentUser && isFirebaseReady) {
+    if (currentUser && isAppwriteReady) {
         debouncedCloudSync();
     }
 }
@@ -331,7 +450,7 @@ function saveUserMemory() {
         localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
         
         // Trigger cloud sync if user is logged in
-        if (currentUser && isFirebaseReady) {
+        if (currentUser && isAppwriteReady) {
             debouncedCloudSync();
         }
     } catch (error) {
@@ -344,7 +463,7 @@ function saveConversationSettings() {
         localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
         
         // Trigger cloud sync if user is logged in
-        if (currentUser && isFirebaseReady) {
+        if (currentUser && isAppwriteReady) {
             debouncedCloudSync();
         }
     } catch (error) {
@@ -497,11 +616,60 @@ function handleGoogleSignIn(response) {
 }
 
 // Initialize admin system
-function initializeAdmin() {
+async function initializeAdmin() {
     try {
-        // Create admin account if it doesn't exist
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         const adminEmail = 'coenyin9@gmail.com';
+        
+        if (isAppwriteReady) {
+            // Ensure admin account exists in Appwrite
+            await ensureAdminAccountInAppwrite(adminEmail);
+        } else {
+            // Fallback to localStorage
+            createLocalAdminAccount(adminEmail);
+        }
+    } catch (error) {
+        console.error('Error initializing admin account:', error);
+        // Force create owner account as fallback
+        createLocalAdminAccount('coenyin9@gmail.com');
+    }
+}
+
+async function ensureAdminAccountInAppwrite(adminEmail) {
+    try {
+        // Check if admin user exists in database
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            [Appwrite.Query.equal('email', adminEmail)]
+        );
+        
+        if (response.documents.length === 0) {
+            console.log('Admin account needs to be created manually in Appwrite Auth first');
+        } else {
+            const adminUser = response.documents[0];
+            // Ensure admin has owner privileges
+            if (!adminUser.isOwner || !adminUser.isAdmin) {
+                await databases.updateDocument(
+                    DATABASE_ID,
+                    USERS_COLLECTION_ID,
+                    adminUser.$id,
+                    {
+                        isOwner: true,
+                        isAdmin: true,
+                        isPro: true
+                    }
+                );
+                console.log('Owner account permissions updated in Appwrite');
+            }
+        }
+    } catch (error) {
+        console.error('Error checking admin account in Appwrite:', error);
+    }
+}
+
+function createLocalAdminAccount(adminEmail) {
+    try {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         
         // Always ensure admin account exists with correct properties - now as OWNER
         if (!users[adminEmail]) {
@@ -529,28 +697,7 @@ function initializeAdmin() {
             }
         }
     } catch (error) {
-        console.error('Error initializing admin account:', error);
-        // Force create owner account as fallback
-        try {
-            const adminEmail = 'coenyin9@gmail.com';
-            const hashedPassword = hashPassword('Carronshore93');
-            const users = {
-                [adminEmail]: {
-                    name: 'Coen Yin',
-                    email: adminEmail,
-                    password: hashedPassword,
-                    createdAt: new Date().toISOString(),
-                    isPro: true,
-                    isAdmin: true,
-                    isOwner: true,
-                    profilePhoto: null
-                }
-            };
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-            console.log('Owner account force-created as fallback');
-        } catch (fallbackError) {
-            console.error('Failed to create owner account fallback:', fallbackError);
-        }
+        console.error('Failed to create local admin account:', error);
     }
 }
 
@@ -1435,6 +1582,85 @@ function handleSignup(event) {
         return;
     }
     
+    // Create account with Appwrite
+    createAccountWithAppwrite(name, email, password);
+}
+
+async function createAccountWithAppwrite(name, email, password) {
+    if (!isAppwriteReady) {
+        // Fallback to localStorage
+        createAccountLocally(name, email, password);
+        return;
+    }
+    
+    try {
+        // Create account
+        const user = await account.create('unique()', email, password, name);
+        
+        // Create email session
+        await account.createEmailSession(email, password);
+        
+        // Create user document
+        const userData = {
+            name: name,
+            email: email,
+            isPro: false,
+            isAdmin: false,
+            isOwner: email === 'coenyin9@gmail.com', // Set owner for specific email
+            profilePhoto: null,
+            restrictions: {
+                maxChatsPerDay: 50,
+                maxMessagesPerChat: 100,
+                canExportData: true,
+                canUploadImages: true,
+                canAccessAdvancedSettings: true,
+                canUseVoiceInput: true
+            },
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString()
+        };
+        
+        await databases.createDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            user.$id,
+            userData
+        );
+        
+        // Set current user
+        currentUser = {
+            id: user.$id,
+            name: name,
+            email: email,
+            isPro: userData.isPro,
+            isAdmin: userData.isAdmin,
+            isOwner: userData.isOwner,
+            profilePhoto: null,
+            restrictions: userData.restrictions
+        };
+        
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+        
+        // Initialize memory system for this user
+        initializeMemorySystem();
+        
+    } catch (error) {
+        console.error('Appwrite signup error:', error);
+        if (error.code === 409) {
+            showToast('An account with this email already exists', 'error');
+        } else {
+            showToast('Failed to create account. Please try again.', 'error');
+        }
+    }
+}
+
+// Fallback to localStorage for offline mode
+function createAccountLocally(name, email, password) {
     // Check if user already exists
     const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     if (existingUsers[email]) {
@@ -1451,7 +1677,7 @@ function handleSignup(event) {
         createdAt: new Date().toISOString(),
         isPro: false,
         isAdmin: false,
-        isOwner: false,
+        isOwner: email === 'coenyin9@gmail.com',
         profilePhoto: null,
         restrictions: {
             maxChatsPerDay: 50,
@@ -1461,42 +1687,29 @@ function handleSignup(event) {
         }
     };
     
-    // Save user
     existingUsers[email] = newUser;
     localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
     
     // Log in the user
-    currentUser = { 
-        name, 
-        email, 
-        isPro: false, 
-        isAdmin: false, 
-        isOwner: false, 
+    currentUser = {
+        name,
+        email,
+        isPro: newUser.isPro,
+        isAdmin: newUser.isAdmin,
+        isOwner: newUser.isOwner,
         profilePhoto: null,
         restrictions: newUser.restrictions
     };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
     
-    // Check for pending pro upgrade
-    if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-        sessionStorage.removeItem('pendingProUpgrade');
-        upgradeToPro();
-    }
-    
     hideAuthModal();
     updateUserInterface();
+    initializeTheme();
     showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
     
-    // Initialize memory system for new user
+    // Initialize memory system for this user
     initializeMemorySystem();
-    
-    // Sync new user data to cloud if available
-    if (isFirebaseReady) {
-        setupRealtimeListeners();
-        setTimeout(() => {
-            syncUserDataToCloud();
-        }, 1000);
-    }
+}
 }
 
 function handleLogin(event) {
@@ -1511,14 +1724,51 @@ function handleLogin(event) {
         return;
     }
     
+    // Login with Appwrite
+    loginWithAppwrite(email, password);
+}
+
+async function loginWithAppwrite(email, password) {
+    if (!isAppwriteReady) {
+        // Fallback to localStorage
+        loginLocally(email, password);
+        return;
+    }
+    
+    try {
+        // Create email session
+        await account.createEmailSession(email, password);
+        
+        // Get user account
+        const user = await account.get();
+        
+        // Load user from Appwrite
+        await loadUserFromAppwrite(user);
+        
+        hideAuthModal();
+        showToast(`Welcome back, ${user.name}!`, 'success');
+        
+        // Initialize memory system for this user
+        initializeMemorySystem();
+        
+    } catch (error) {
+        console.error('Appwrite login error:', error);
+        if (error.code === 401) {
+            showToast('Invalid email or password. Please try again.', 'error');
+        } else {
+            showToast('Login failed. Please try again.', 'error');
+        }
+    }
+}
+
+// Fallback to localStorage for offline mode
+function loginLocally(email, password) {
     try {
         // Check credentials
         const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         const user = existingUsers[email];
         
         if (!user) {
-            // For debugging: log available users (remove in production)
-            console.log('Available users:', Object.keys(existingUsers));
             showToast('No account found with this email. Please check your email address or create a new account.', 'error');
             return;
         }
@@ -1536,15 +1786,15 @@ function handleLogin(event) {
             isPro: user.isPro || false,
             isAdmin: user.isAdmin || false,
             isOwner: user.isOwner || false,
-            profilePhoto: user.profilePhoto || null
+            profilePhoto: user.profilePhoto || null,
+            restrictions: user.restrictions || {
+                maxChatsPerDay: 50,
+                maxMessagesPerChat: 100,
+                canExportData: true,
+                canUploadImages: true
+            }
         };
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-        
-        // Check for pending pro upgrade
-        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-            sessionStorage.removeItem('pendingProUpgrade');
-            upgradeToPro();
-        }
         
         hideAuthModal();
         updateUserInterface();
@@ -1554,21 +1804,22 @@ function handleLogin(event) {
         // Initialize memory system for this user
         initializeMemorySystem();
         
-        // Sync data from cloud if available
-        if (isFirebaseReady) {
-            setupRealtimeListeners();
-            setTimeout(() => {
-                syncUserDataFromCloud();
-            }, 1000);
-        }
-        
     } catch (error) {
         console.error('Login error:', error);
         showToast('An error occurred during login. Please refresh the page and try again.', 'error');
     }
 }
 
-function handleLogout() {
+async function handleLogout() {
+    if (isAppwriteReady) {
+        try {
+            // Delete current session in Appwrite
+            await account.deleteSession('current');
+        } catch (error) {
+            console.error('Error deleting Appwrite session:', error);
+        }
+    }
+    
     currentUser = null;
     localStorage.removeItem('talkie-user');
     updateUserInterface();
@@ -3266,14 +3517,51 @@ function setupAdminUserManagement() {
 }
 
 let selectedUserEmail = null;
+let selectedUserId = null;
 
-function searchUser() {
+async function searchUser() {
     const email = document.getElementById('userSearchInput').value.trim();
     if (!email) {
         showToast('Please enter an email address', 'warning');
         return;
     }
     
+    if (isAppwriteReady) {
+        await searchUserInAppwrite(email);
+    } else {
+        searchUserLocally(email);
+    }
+}
+
+async function searchUserInAppwrite(email) {
+    try {
+        // Search for user by email in Appwrite database
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            [
+                Appwrite.Query.equal('email', email)
+            ]
+        );
+        
+        if (response.documents.length === 0) {
+            showToast('User not found', 'error');
+            document.getElementById('userDetails').style.display = 'none';
+            return;
+        }
+        
+        const user = response.documents[0];
+        selectedUserEmail = email;
+        selectedUserId = user.$id;
+        displayUserDetails(user);
+        
+    } catch (error) {
+        console.error('Error searching user in Appwrite:', error);
+        showToast('Error searching for user', 'error');
+    }
+}
+
+function searchUserLocally(email) {
     const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const user = users[email];
     
@@ -3340,7 +3628,7 @@ function displayUserDetails(user) {
     document.getElementById('userDetails').style.display = 'block';
 }
 
-function toggleUserPro() {
+async function toggleUserPro() {
     if (!selectedUserEmail) return;
     
     if (!currentUser?.isOwner && !currentUser?.isAdmin) {
@@ -3348,6 +3636,49 @@ function toggleUserPro() {
         return;
     }
     
+    if (isAppwriteReady && selectedUserId) {
+        await toggleUserProInAppwrite();
+    } else {
+        toggleUserProLocally();
+    }
+}
+
+async function toggleUserProInAppwrite() {
+    try {
+        // Get current user document
+        const userDoc = await databases.getDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            selectedUserId
+        );
+        
+        // Update isPro status
+        const updatedUser = await databases.updateDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            selectedUserId,
+            {
+                isPro: !userDoc.isPro
+            }
+        );
+        
+        // Update current user if it's the same
+        if (selectedUserEmail === currentUser?.email) {
+            currentUser.isPro = updatedUser.isPro;
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
+        }
+        
+        displayUserDetails(updatedUser);
+        showToast(`${updatedUser.isPro ? 'Granted' : 'Removed'} Pro access for ${updatedUser.name}`, 'success');
+        
+    } catch (error) {
+        console.error('Error toggling Pro status in Appwrite:', error);
+        showToast('Failed to update user Pro status', 'error');
+    }
+}
+
+function toggleUserProLocally() {
     const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const user = users[selectedUserEmail];
     
@@ -3370,7 +3701,7 @@ function toggleUserPro() {
     showToast(`${user.isPro ? 'Granted' : 'Removed'} Pro access for ${user.name}`, 'success');
 }
 
-function toggleUserAdmin() {
+async function toggleUserAdmin() {
     if (!selectedUserEmail) return;
     
     if (!currentUser?.isOwner) {
@@ -3378,6 +3709,62 @@ function toggleUserAdmin() {
         return;
     }
     
+    if (isAppwriteReady && selectedUserId) {
+        await toggleUserAdminInAppwrite();
+    } else {
+        toggleUserAdminLocally();
+    }
+}
+
+async function toggleUserAdminInAppwrite() {
+    try {
+        // Get current user document
+        const userDoc = await databases.getDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            selectedUserId
+        );
+        
+        if (userDoc.isOwner) {
+            showToast('Cannot modify owner privileges', 'error');
+            return;
+        }
+        
+        // Update admin status
+        const updates = {
+            isAdmin: !userDoc.isAdmin
+        };
+        
+        // Grant Pro access when making admin
+        if (!userDoc.isAdmin && !userDoc.isPro) {
+            updates.isPro = true;
+        }
+        
+        const updatedUser = await databases.updateDocument(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            selectedUserId,
+            updates
+        );
+        
+        // Update current user if it's the same
+        if (selectedUserEmail === currentUser?.email) {
+            currentUser.isAdmin = updatedUser.isAdmin;
+            currentUser.isPro = updatedUser.isPro;
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
+        }
+        
+        displayUserDetails(updatedUser);
+        showToast(`${updatedUser.isAdmin ? 'Granted' : 'Removed'} admin privileges for ${updatedUser.name}`, 'success');
+        
+    } catch (error) {
+        console.error('Error toggling admin status in Appwrite:', error);
+        showToast('Failed to update user admin status', 'error');
+    }
+}
+
+function toggleUserAdminLocally() {
     const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const user = users[selectedUserEmail];
     
@@ -4175,7 +4562,7 @@ function updateSyncStatusIndicator() {
         return;
     }
     
-    if (!isFirebaseReady) {
+    if (!isAppwriteReady) {
         syncIcon.className = 'fas fa-wifi-slash';
         syncText.textContent = 'Offline';
         syncStatus.className = 'sync-status offline';
@@ -4218,7 +4605,7 @@ async function forceSync() {
         return;
     }
     
-    if (!isFirebaseReady) {
+    if (!isAppwriteReady) {
         showToast('Cloud sync is currently unavailable', 'warning');
         return;
     }
@@ -4276,7 +4663,7 @@ function clearLocalData() {
         updateSyncStatusIndicator();
         
         // Sync from cloud if available
-        if (currentUser && isFirebaseReady) {
+        if (currentUser && isAppwriteReady) {
             setTimeout(() => {
                 syncUserDataFromCloud();
             }, 1000);
@@ -4532,7 +4919,7 @@ function updateSyncInfo() {
         return;
     }
     
-    if (!isFirebaseReady) {
+    if (!isAppwriteReady) {
         syncStatusText.textContent = 'Offline (Local storage only)';
         lastSyncText.textContent = 'Cloud sync unavailable';
         return;
