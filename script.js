@@ -3,7 +3,7 @@ const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Appwrite Configuration
-const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
+const APPWRITE_PROJECT_ID = 'talkie-gen-ai-prod';
 const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
 
 // Appwrite instances
@@ -13,8 +13,9 @@ let databases = null;
 let isAppwriteReady = false;
 
 // Database and Collection IDs
-const DATABASE_ID = 'talkie-gen-db';
+const DATABASE_ID = 'main-database';
 const USERS_COLLECTION_ID = 'users';
+const USER_DATA_COLLECTION_ID = 'user_data';
 const CHATS_COLLECTION_ID = 'chats';
 const STATS_COLLECTION_ID = 'stats';
 
@@ -150,7 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeAppwrite() {
     // Check if Appwrite is loaded
     if (typeof Appwrite === 'undefined') {
-        console.log('Appwrite SDK not loaded, using localStorage only');
+        console.log('Appwrite SDK not loaded - using localStorage mode');
+        showAuthModeStatus('localStorage');
         return;
     }
     
@@ -168,7 +170,8 @@ function initializeAppwrite() {
         isAppwriteReady = true;
         isOnlineMode = true;
         
-        console.log('Appwrite initialized successfully - Cloud sync enabled');
+        console.log('Appwrite initialized successfully');
+        showAuthModeStatus('cloud');
         
         // Check if user is already logged in
         checkCurrentSession();
@@ -177,6 +180,31 @@ function initializeAppwrite() {
         console.error('Appwrite initialization failed:', error);
         isAppwriteReady = false;
         isOnlineMode = false;
+        showAuthModeStatus('localStorage', 'Appwrite connection failed');
+    }
+}
+
+// Show authentication mode status to user
+function showAuthModeStatus(mode, errorDetails = null) {
+    const indicator = document.getElementById('authModeIndicator');
+    const text = document.getElementById('authModeText');
+    const dot = indicator?.querySelector('.mode-dot');
+    
+    if (!indicator || !text || !dot) return;
+    
+    if (mode === 'cloud') {
+        console.log('✅ Cloud sync enabled - your data will be saved to the cloud');
+        indicator.style.display = 'flex';
+        text.textContent = 'Cloud Sync';
+        dot.className = 'mode-dot cloud';
+    } else {
+        console.log('💾 Local storage mode - your data will be saved locally');
+        indicator.style.display = 'flex';
+        text.textContent = 'Local Mode';
+        dot.className = 'mode-dot';
+        if (errorDetails) {
+            console.log('ℹ️  Details:', errorDetails);
+        }
     }
 }
 
@@ -355,7 +383,7 @@ async function syncUserDataToCloud() {
             // Try to update existing document
             await databases.updateDocument(
                 DATABASE_ID,
-                'user_data',
+                USER_DATA_COLLECTION_ID,
                 userDataId,
                 userData
             );
@@ -364,7 +392,7 @@ async function syncUserDataToCloud() {
                 // Document doesn't exist, create it
                 await databases.createDocument(
                     DATABASE_ID,
-                    'user_data',
+                    USER_DATA_COLLECTION_ID,
                     userDataId,
                     userData
                 );
@@ -410,7 +438,7 @@ async function syncUserDataFromCloud() {
         try {
             const cloudData = await databases.getDocument(
                 DATABASE_ID,
-                'user_data',
+                USER_DATA_COLLECTION_ID,
                 userDataId
             );
             
@@ -537,9 +565,18 @@ function debouncedCloudSync() {
 // Google OAuth initialization
 function initializeGoogleAuth() {
     if (typeof google !== 'undefined' && google.accounts) {
+        // Note: Replace with your actual Google OAuth client ID
+        // You can get one from: https://console.developers.google.com/
+        const GOOGLE_CLIENT_ID = 'your-google-oauth-client-id.apps.googleusercontent.com';
+        
+        if (GOOGLE_CLIENT_ID === 'your-google-oauth-client-id.apps.googleusercontent.com') {
+            console.log('Google OAuth not configured - set up your client ID in script.js');
+            return;
+        }
+        
         // Initialize Google Identity Services
         google.accounts.id.initialize({
-            client_id: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Demo client ID
+            client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleSignIn,
             auto_select: false,
             cancel_on_tap_outside: true
@@ -548,7 +585,7 @@ function initializeGoogleAuth() {
         // Render sign-in buttons
         renderGoogleSignInButtons();
     } else {
-        console.log('Google Identity Services not loaded');
+        console.log('Google Identity Services not loaded - this is expected when external resources are blocked');
     }
 }
 
@@ -1690,7 +1727,8 @@ function handleSignup(event) {
 
 async function createAccountWithAppwrite(name, email, password) {
     if (!isAppwriteReady) {
-        // Fallback to localStorage
+        // Fallback to localStorage with user notification
+        console.log('Using local storage for account creation');
         createAccountLocally(name, email, password);
         return;
     }
@@ -1746,7 +1784,7 @@ async function createAccountWithAppwrite(name, email, password) {
         hideAuthModal();
         updateUserInterface();
         initializeTheme();
-        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+        showToast(`Welcome to Talkie Gen AI, ${name}! 🌟 Cloud sync enabled.`, 'success');
         
         // Initialize memory system for this user
         initializeMemorySystem();
@@ -1754,9 +1792,13 @@ async function createAccountWithAppwrite(name, email, password) {
     } catch (error) {
         console.error('Appwrite signup error:', error);
         if (error.code === 409) {
-            showToast('An account with this email already exists', 'error');
+            showToast('An account with this email already exists. Please try logging in instead.', 'error');
+        } else if (error.code === 401) {
+            showToast('Invalid email or password format. Please check and try again.', 'error');
         } else {
-            showToast('Failed to create account. Please try again.', 'error');
+            // Fallback to localStorage on any Appwrite error
+            console.log('Appwrite signup failed, falling back to localStorage');
+            createAccountLocally(name, email, password);
         }
     }
 }
@@ -1766,7 +1808,7 @@ function createAccountLocally(name, email, password) {
     // Check if user already exists
     const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     if (existingUsers[email]) {
-        showToast('An account with this email already exists', 'error');
+        showToast('An account with this email already exists. Please try logging in instead.', 'error');
         return;
     }
     
@@ -1807,7 +1849,7 @@ function createAccountLocally(name, email, password) {
     hideAuthModal();
     updateUserInterface();
     initializeTheme();
-    showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+    showToast(`Welcome to Talkie Gen AI, ${name}! 💾 Using local storage.`, 'success');
     
     // Initialize memory system for this user
     initializeMemorySystem();
@@ -1833,7 +1875,8 @@ function handleLogin(event) {
 
 async function loginWithAppwrite(email, password) {
     if (!isAppwriteReady) {
-        // Fallback to localStorage
+        // Fallback to localStorage with user notification
+        console.log('Using local storage for login');
         loginLocally(email, password);
         return;
     }
@@ -1849,7 +1892,7 @@ async function loginWithAppwrite(email, password) {
         await loadUserFromAppwrite(user);
         
         hideAuthModal();
-        showToast(`Welcome back, ${user.name}!`, 'success');
+        showToast(`Welcome back, ${user.name}! 🌟 Cloud sync enabled.`, 'success');
         
         // Initialize memory system for this user
         initializeMemorySystem();
@@ -1857,9 +1900,11 @@ async function loginWithAppwrite(email, password) {
     } catch (error) {
         console.error('Appwrite login error:', error);
         if (error.code === 401) {
-            showToast('Invalid email or password. Please try again.', 'error');
+            showToast('Invalid email or password. Please check your credentials and try again.', 'error');
         } else {
-            showToast('Login failed. Please try again.', 'error');
+            // Fallback to localStorage on connection errors
+            console.log('Appwrite login failed, trying localStorage');
+            loginLocally(email, password);
         }
     }
 }
@@ -1911,7 +1956,7 @@ function loginLocally(email, password) {
         hideAuthModal();
         updateUserInterface();
         initializeTheme(); // Refresh theme options for potential Pro user
-        showToast(`Welcome back, ${user.name}!`, 'success');
+        showToast(`Welcome back, ${user.name}! 💾 Using local storage.`, 'success');
         
         // Initialize memory system for this user
         initializeMemorySystem();
