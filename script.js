@@ -137,6 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
+    
+    // Make debug functions globally available
+    window.checkAdminSystem = checkAdminSystem;
+    window.listAllUsers = listAllUsers;
+    window.syncExistingUserData = syncExistingUserData;
+    console.log('🔧 Debug functions available: checkAdminSystem(), listAllUsers(), syncExistingUserData()');
 });
 
 // Appwrite authentication initialization
@@ -231,9 +237,58 @@ function syncExistingUserData() {
             }
         }
         
+        // Sync any users who might be in browser memory but not in admin system
+        syncAllStoredUsers();
+        
         console.log('User data synchronization complete');
     } catch (error) {
         console.error('Error synchronizing user data:', error);
+    }
+}
+
+// Sync all users that have ever been stored in browser storage
+function syncAllStoredUsers() {
+    try {
+        // Check for historical user data that might be stored separately
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            
+            // Look for any user-related storage keys
+            if (key && key.includes('user') && key !== 'talkie-users') {
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    
+                    // If it looks like user data, try to sync it
+                    if (data && data.email && data.name && !Array.isArray(data)) {
+                        console.log('Found potential user data in storage key:', key);
+                        storeUserInAdminSystem(data);
+                    }
+                } catch (e) {
+                    // Ignore parsing errors for non-JSON data
+                }
+            }
+        }
+        
+        // Also check sessionStorage for any temporary user data
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            
+            if (key && key.includes('user')) {
+                try {
+                    const data = JSON.parse(sessionStorage.getItem(key));
+                    if (data && data.email && data.name && !Array.isArray(data)) {
+                        console.log('Found potential user data in sessionStorage key:', key);
+                        storeUserInAdminSystem(data);
+                    }
+                } catch (e) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+        
+        console.log('Historical user data synchronization complete');
+    } catch (error) {
+        console.error('Error syncing historical user data:', error);
     }
 }
 
@@ -1216,6 +1271,11 @@ async function handleSignup(event) {
 function storeUserInAdminSystem(user) {
     try {
         const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        
+        // Check if user already exists to preserve signup date
+        const existingUser = users[user.email];
+        const signupDate = existingUser ? existingUser.signupDate : new Date().toISOString();
+        
         users[user.email] = {
             name: user.name,
             email: user.email,
@@ -1224,11 +1284,16 @@ function storeUserInAdminSystem(user) {
             isAdmin: user.isAdmin || false,
             isOwner: user.isOwner || false,
             profilePhoto: user.profilePhoto || null,
-            signupDate: new Date().toISOString(),
+            signupDate: signupDate,
             lastLoginDate: new Date().toISOString()
         };
         localStorage.setItem('talkie-users', JSON.stringify(users));
-        console.log('User stored in admin system:', user.email);
+        console.log('User stored/updated in admin system:', user.email);
+        
+        // Also trigger admin stats refresh if admin panel is open
+        if (document.getElementById('adminModal')?.classList.contains('active')) {
+            loadAdminStats();
+        }
     } catch (error) {
         console.error('Error storing user in admin system:', error);
     }
@@ -2935,14 +3000,25 @@ function removeProfilePhoto() {
 
 // Admin Panel Functions
 function showAdminPanel() {
-    if (!currentUser || !currentUser.isAdmin) return;
+    if (!currentUser || (!currentUser.isAdmin && !currentUser.isOwner)) {
+        showToast('Access denied. Admin privileges required.', 'error');
+        return;
+    }
     
     adminModalOverlay.classList.add('active');
     adminModal.classList.add('active');
     document.body.style.overflow = 'hidden';
     
+    // Ensure all users are synced before loading stats
+    syncExistingUserData();
+    
     // Load and display statistics
     loadAdminStats();
+    
+    // Also refresh user count to ensure it's accurate
+    setTimeout(() => {
+        loadAdminStats();
+    }, 100);
 }
 
 function hideAdminPanel() {
@@ -3005,6 +3081,9 @@ function setupAdminUserManagement() {
                 searchUser();
             }
         });
+        
+        // Add placeholder with example email for better UX
+        userSearchInput.placeholder = 'Enter user email (e.g., user@example.com)';
     }
     
     if (toggleProBtn) {
@@ -3018,6 +3097,108 @@ function setupAdminUserManagement() {
     if (deleteUserBtn) {
         deleteUserBtn.addEventListener('click', deleteUser);
     }
+    
+    // Add a "List All Users" button functionality
+    addListAllUsersButton();
+}
+
+// Add functionality to list all users for easier management
+function addListAllUsersButton() {
+    try {
+        // Find the user search container
+        const userSearch = document.querySelector('.user-search');
+        if (!userSearch) return;
+        
+        // Check if button already exists
+        if (document.getElementById('listAllUsersBtn')) return;
+        
+        // Create "List All Users" button
+        const listAllBtn = document.createElement('button');
+        listAllBtn.id = 'listAllUsersBtn';
+        listAllBtn.className = 'search-btn';
+        listAllBtn.innerHTML = '<i class="fas fa-list"></i> List All';
+        listAllBtn.title = 'Show all registered users';
+        
+        // Add click handler
+        listAllBtn.addEventListener('click', listAllUsers);
+        
+        // Insert after the search button
+        const searchBtn = document.getElementById('searchUserBtn');
+        if (searchBtn) {
+            searchBtn.parentNode.insertBefore(listAllBtn, searchBtn.nextSibling);
+        }
+    } catch (error) {
+        console.error('Error adding list all users button:', error);
+    }
+}
+
+// Function to list all users
+function listAllUsers() {
+    try {
+        // Force sync first
+        syncExistingUserData();
+        
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const userEmails = Object.keys(users);
+        
+        if (userEmails.length === 0) {
+            showToast('No users found in the system. Users will appear after they sign up.', 'info');
+            return;
+        }
+        
+        // Show all users in console and toast
+        console.log('All registered users:', users);
+        console.log('User emails:', userEmails);
+        
+        // Create a summary for the toast
+        const userSummary = userEmails.slice(0, 3).join(', ') + 
+                           (userEmails.length > 3 ? ` and ${userEmails.length - 3} more` : '');
+        
+        showToast(`Found ${userEmails.length} user(s): ${userSummary}. Check console for full list.`, 'success');
+        
+        // If there's only one user, auto-select them
+        if (userEmails.length === 1) {
+            document.getElementById('userSearchInput').value = userEmails[0];
+            searchUser();
+        }
+        
+    } catch (error) {
+        console.error('Error listing all users:', error);
+        showToast('Error retrieving user list', 'error');
+    }
+}
+
+// Debug function to check admin system status (can be called from console)
+function checkAdminSystem() {
+    console.log('=== Admin System Debug Information ===');
+    console.log('Current User:', currentUser);
+    console.log('Appwrite Client Available:', !!appwriteClient);
+    console.log('Appwrite Account Available:', !!appwriteAccount);
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    console.log('Users in Admin System:', users);
+    console.log('Number of Users:', Object.keys(users).length);
+    
+    const currentUserData = localStorage.getItem('talkie-user');
+    console.log('Current User Data in Storage:', currentUserData ? JSON.parse(currentUserData) : null);
+    
+    // Check if current user is in admin system
+    if (currentUser && users[currentUser.email]) {
+        console.log('✅ Current user is in admin system');
+    } else if (currentUser) {
+        console.log('❌ Current user is NOT in admin system - syncing now...');
+        storeUserInAdminSystem(currentUser);
+    } else {
+        console.log('ℹ️ No current user logged in');
+    }
+    
+    console.log('=== End Debug Information ===');
+    return {
+        currentUser,
+        usersInAdminSystem: users,
+        userCount: Object.keys(users).length,
+        appwriteAvailable: !!appwriteClient
+    };
 }
 
 let selectedUserEmail = null;
@@ -3029,16 +3210,22 @@ function searchUser() {
         return;
     }
     
+    // Force sync before searching to ensure we have all users
+    syncExistingUserData();
+    
     const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const user = users[email];
     
     if (!user) {
-        // Provide more helpful feedback
+        // Provide more helpful feedback with available users
         const userCount = Object.keys(users).length;
+        const userEmails = Object.keys(users);
+        
         if (userCount === 0) {
-            showToast('No users found in the system. Users will appear here after they sign up.', 'info');
+            showToast('No users found in the system. Users will appear here after they sign up and the data syncs.', 'info');
         } else {
-            showToast(`User "${email}" not found. ${userCount} user(s) registered in system.`, 'error');
+            console.log('Available users in system:', userEmails);
+            showToast(`User "${email}" not found. ${userCount} user(s) registered in system. Check console for available emails.`, 'error');
         }
         document.getElementById('userDetails').style.display = 'none';
         return;
