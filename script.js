@@ -167,6 +167,10 @@ async function initializeAppwrite() {
             }
             
             localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            
+            // Store/update user in admin user management system
+            storeUserInAdminSystem(currentUser);
+            
             updateUserInterface();
             initializeTheme();
             console.log('User already logged in:', currentUser.email);
@@ -198,10 +202,38 @@ async function initializeAdmin() {
             currentUser.isAdmin = true;
             currentUser.isPro = true;
             localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            storeUserInAdminSystem(currentUser);
             updateUserInterface();
         }
+        
+        // Synchronize any existing user data with admin system
+        syncExistingUserData();
+        
     } catch (error) {
         console.error('Error initializing admin system:', error);
+    }
+}
+
+// Synchronize existing user data with admin system
+function syncExistingUserData() {
+    try {
+        // If we have a current user, ensure they're in the admin system
+        if (currentUser) {
+            storeUserInAdminSystem(currentUser);
+        }
+        
+        // Check for any legacy user data and migrate it
+        const legacyUser = localStorage.getItem('talkie-user');
+        if (legacyUser) {
+            const userData = JSON.parse(legacyUser);
+            if (userData.email && userData.name) {
+                storeUserInAdminSystem(userData);
+            }
+        }
+        
+        console.log('User data synchronization complete');
+    } catch (error) {
+        console.error('Error synchronizing user data:', error);
     }
 }
 
@@ -1077,7 +1109,42 @@ async function handleSignup(event) {
     }
     
     if (!appwriteAccount) {
-        showToast('Authentication service unavailable. Please try again later.', 'error');
+        // Fallback for development/testing when Appwrite is not available
+        console.warn('Appwrite not available, using local authentication for testing');
+        
+        // Check if user already exists in local storage
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        if (users[email]) {
+            showToast('An account with this email already exists', 'error');
+            return;
+        }
+        
+        // Create user object
+        currentUser = {
+            name: name,
+            email: email,
+            appwriteId: 'local_' + Date.now(),
+            isPro: false,
+            isAdmin: false,
+            isOwner: email === 'coenyin9@gmail.com',
+            profilePhoto: null
+        };
+        
+        // Set admin/owner status for the owner account
+        if (currentUser.isOwner) {
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
+        }
+        
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Store user in admin user management system
+        storeUserInAdminSystem(currentUser);
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome to Talkie Gen AI, ${name}! (Development Mode)`, 'success');
         return;
     }
     
@@ -1117,6 +1184,9 @@ async function handleSignup(event) {
         
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
         
+        // Store user in admin user management system
+        storeUserInAdminSystem(currentUser);
+        
         // Check for pending pro upgrade
         if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
             sessionStorage.removeItem('pendingProUpgrade');
@@ -1142,6 +1212,28 @@ async function handleSignup(event) {
     }
 }
 
+// Store user in admin management system
+function storeUserInAdminSystem(user) {
+    try {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        users[user.email] = {
+            name: user.name,
+            email: user.email,
+            appwriteId: user.appwriteId,
+            isPro: user.isPro || false,
+            isAdmin: user.isAdmin || false,
+            isOwner: user.isOwner || false,
+            profilePhoto: user.profilePhoto || null,
+            signupDate: new Date().toISOString(),
+            lastLoginDate: new Date().toISOString()
+        };
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        console.log('User stored in admin system:', user.email);
+    } catch (error) {
+        console.error('Error storing user in admin system:', error);
+    }
+}
+
 async function handleLogin(event) {
     event.preventDefault();
     
@@ -1155,7 +1247,44 @@ async function handleLogin(event) {
     }
     
     if (!appwriteAccount) {
-        showToast('Authentication service unavailable. Please try again later.', 'error');
+        // Fallback for development/testing when Appwrite is not available
+        console.warn('Appwrite not available, using local authentication for testing');
+        
+        // Check if user exists in local storage
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const user = users[email];
+        
+        if (!user) {
+            showToast('Invalid email or password', 'error');
+            return;
+        }
+        
+        // Create user object (simulate successful login)
+        currentUser = {
+            name: user.name,
+            email: user.email,
+            appwriteId: user.appwriteId,
+            isPro: user.isPro || false,
+            isAdmin: user.isAdmin || false,
+            isOwner: email === 'coenyin9@gmail.com',
+            profilePhoto: user.profilePhoto || null
+        };
+        
+        // Set admin/owner status for the owner account
+        if (currentUser.isOwner) {
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
+        }
+        
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Store/update user in admin user management system
+        storeUserInAdminSystem(currentUser);
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome back, ${user.name}! (Development Mode)`, 'success');
         return;
     }
     
@@ -1184,6 +1313,9 @@ async function handleLogin(event) {
         }
         
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Store/update user in admin user management system
+        storeUserInAdminSystem(currentUser);
         
         // Check for pending pro upgrade
         if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
@@ -2901,13 +3033,20 @@ function searchUser() {
     const user = users[email];
     
     if (!user) {
-        showToast('User not found', 'error');
+        // Provide more helpful feedback
+        const userCount = Object.keys(users).length;
+        if (userCount === 0) {
+            showToast('No users found in the system. Users will appear here after they sign up.', 'info');
+        } else {
+            showToast(`User "${email}" not found. ${userCount} user(s) registered in system.`, 'error');
+        }
         document.getElementById('userDetails').style.display = 'none';
         return;
     }
     
     selectedUserEmail = email;
     displayUserDetails(user);
+    showToast(`Found user: ${user.name}`, 'success');
 }
 
 function displayUserDetails(user) {
