@@ -7,14 +7,23 @@ const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
 
 // Initialize Appwrite client
-const { Client, Account, Databases, Storage, Teams } = Appwrite;
-const appwriteClient = new Client();
-appwriteClient
-    .setEndpoint(APPWRITE_ENDPOINT)
-    .setProject(APPWRITE_PROJECT_ID);
+let appwriteClient = null;
+let appwriteAccount = null;
+let appwriteDatabases = null;
 
-const appwriteAccount = new Account(appwriteClient);
-const appwriteDatabases = new Databases(appwriteClient);
+// Check if Appwrite is available
+if (typeof Appwrite !== 'undefined') {
+    const { Client, Account, Databases, Storage, Teams } = Appwrite;
+    appwriteClient = new Client();
+    appwriteClient
+        .setEndpoint(APPWRITE_ENDPOINT)
+        .setProject(APPWRITE_PROJECT_ID);
+
+    appwriteAccount = new Account(appwriteClient);
+    appwriteDatabases = new Databases(appwriteClient);
+} else {
+    console.warn('Appwrite SDK not loaded - authentication will be disabled');
+}
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -132,6 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Appwrite authentication initialization
 async function initializeAppwrite() {
+    if (!appwriteAccount) {
+        console.warn('Appwrite not available - skipping authentication initialization');
+        return;
+    }
+    
     try {
         // Check if user is already logged in
         const session = await appwriteAccount.get();
@@ -1062,6 +1076,11 @@ async function handleSignup(event) {
         return;
     }
     
+    if (!appwriteAccount) {
+        showToast('Authentication service unavailable. Please try again later.', 'error');
+        return;
+    }
+    
     try {
         // Create account with Appwrite
         const response = await appwriteAccount.create(
@@ -1135,6 +1154,11 @@ async function handleLogin(event) {
         return;
     }
     
+    if (!appwriteAccount) {
+        showToast('Authentication service unavailable. Please try again later.', 'error');
+        return;
+    }
+    
     try {
         // Create session with Appwrite
         await appwriteAccount.createEmailSession(email, password);
@@ -1188,8 +1212,10 @@ async function handleLogin(event) {
 
 async function handleLogout() {
     try {
-        // Delete current session in Appwrite
-        await appwriteAccount.deleteSession('current');
+        // Delete current session in Appwrite if available
+        if (appwriteAccount) {
+            await appwriteAccount.deleteSession('current');
+        }
         
         // Clear local user data
         currentUser = null;
@@ -2562,6 +2588,13 @@ window.sendFollowUpQuestion = sendFollowUpQuestion;
 window.checkAdminAccount = async function() {
     try {
         console.log('=== APPWRITE ADMIN ACCOUNT STATUS ===');
+        
+        if (!appwriteAccount) {
+            console.log('❌ Appwrite SDK not loaded');
+            console.log('This usually means external resources are blocked');
+            console.log('In production, Appwrite will be available');
+            return false;
+        }
         
         try {
             const currentSession = await appwriteAccount.get();
