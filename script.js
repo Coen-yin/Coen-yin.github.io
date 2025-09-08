@@ -1725,7 +1725,6 @@ function setupEventListeners() {
     // Update sync status indicator
     updateSyncStatusIndicator();
 }
-}
 
 function handleKeyboardShortcuts(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -1932,7 +1931,7 @@ function filterInappropriateContent(text) {
     const inappropriateWords = [
         'fuck', 'shit', 'bitch', 'asshole', 'damn', 'Motherfucker', 'crap', 
         'piss', 'bastard', 'slut', 'whore', 'retard', 'gay', 'fag',
-        'nazi', 'hitler', 'kill yourself', 'kys', 'suicide', 'die' 'Nigga', 'Nigger', 'Nigg', 'Niga',
+        'nazi', 'hitler', 'kill yourself', 'kys', 'suicide', 'die', 'Nigga', 'Nigger', 'Nigg', 'Niga',
     ];
     
     const lowercaseText = text.toLowerCase();
