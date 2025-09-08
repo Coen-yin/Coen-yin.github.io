@@ -3185,3 +3185,208 @@ textarea:focus-visible {
     margin-left: 4px;
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
+
+/* Sync Status Styles */
+.sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.sync-status:hover {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.sync-status.syncing {
+    background: var(--warning);
+    color: white;
+    border-color: var(--warning);
+}
+
+.sync-status.syncing #syncIcon {
+    animation: spin 1s linear infinite;
+}
+
+.sync-status.online {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.sync-status.offline {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Sync Section in Settings */
+.sync-section {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: var(--bg-tertiary);
+}
+
+.sync-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.sync-status-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sync-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.sync-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.sync-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* User Restrictions Styles */
+.user-restrictions {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}
+
+.restriction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+}
+
+.restriction-label {
+    color: var(--text-secondary);
+}
+
+.restriction-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.restriction-value.limited {
+    color: var(--warning);
+}
+
+.restriction-value.blocked {
+    color: var(--danger);
+}
+
+/* Restrictions Modal Styles */
+#restrictionsModal {
+    max-width: 500px;
+}
+
+.restrictions-warning {
+    background: rgba(237, 137, 54, 0.1);
+    border: 1px solid var(--warning);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: var(--warning);
+    font-size: 14px;
+}
+
+.restrictions-warning i {
+    margin-right: 8px;
+}
+
+/* Enhanced Toggle Styles */
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background: var(--border-medium);
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+input[type="checkbox"]:checked + .toggle-slider {
+    background: var(--accent-primary);
+}
+
+input[type="checkbox"]:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* Enhanced form styles for restrictions */
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-group small {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+}
+
+/* Responsive sync status */
+@media (max-width: 768px) {
+    .sync-status #syncText {
+        display: none;
+    }
+    
+    .sync-actions {
+        flex-direction: column;
+    }
+    
+    .sync-actions button {
+        width: 100%;
+    }
+}

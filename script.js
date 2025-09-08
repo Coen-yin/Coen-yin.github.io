@@ -2,6 +2,23 @@
 const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
+// Firebase Configuration for cross-device data sync
+const firebaseConfig = {
+    apiKey: "AIzaSyDemoKey123456789",
+    authDomain: "talkiegen-demo.firebaseapp.com", 
+    databaseURL: "https://talkiegen-demo-default-rtdb.firebaseio.com",
+    projectId: "talkiegen-demo",
+    storageBucket: "talkiegen-demo.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:demo123456789"
+};
+
+// Firebase app instance (will be initialized after Firebase loads)
+let firebaseApp = null;
+let firebaseDB = null;
+let firebaseAuth = null;
+let isFirebaseReady = false;
+
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -87,6 +104,11 @@ let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
 let isGenerating = false;
 let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 
+// Sync state management
+let isOnlineMode = false; // Whether cloud sync is active
+let lastSyncTime = localStorage.getItem('talkie-last-sync') || null;
+let pendingSync = false; // Whether we have unsaved changes to sync
+
 // Enhanced Context and Memory State
 let userMemory = JSON.parse(localStorage.getItem('talkie-user-memory') || '{}');
 let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-settings') || JSON.stringify({
@@ -104,6 +126,7 @@ let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
+    initializeFirebase(); // Initialize Firebase first
     initializeTheme();
     initializeAuth();
     initializeAdmin(); // Initialize admin system
@@ -115,7 +138,231 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
+    
+    // Wait for Firebase before syncing
+    setTimeout(() => {
+        if (currentUser && isFirebaseReady) {
+            syncUserDataFromCloud();
+        }
+    }, 2000);
 });
+
+// Firebase initialization
+function initializeFirebase() {
+    // Check if Firebase is loaded
+    if (typeof firebase === 'undefined') {
+        console.log('Firebase not loaded, using localStorage only');
+        showToast('Running in offline mode - data will not sync across devices', 'info');
+        return;
+    }
+    
+    try {
+        // Initialize Firebase app
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        firebaseDB = firebase.database();
+        firebaseAuth = firebase.auth();
+        isFirebaseReady = true;
+        isOnlineMode = true;
+        
+        console.log('Firebase initialized successfully');
+        showToast('Cloud sync enabled - your data will sync across devices!', 'success');
+        
+        // Set up real-time listeners
+        setupRealtimeListeners();
+        
+    } catch (error) {
+        console.error('Firebase initialization failed:', error);
+        showToast('Cloud sync unavailable - using local storage only', 'warning');
+        isFirebaseReady = false;
+        isOnlineMode = false;
+    }
+}
+
+// Set up real-time listeners for data changes
+function setupRealtimeListeners() {
+    if (!isFirebaseReady || !currentUser) return;
+    
+    const userRef = firebaseDB.ref(`users/${getUserId()}`);
+    
+    // Listen for user data changes
+    userRef.on('value', (snapshot) => {
+        if (snapshot.exists() && !pendingSync) {
+            const cloudData = snapshot.val();
+            handleCloudDataUpdate(cloudData);
+        }
+    });
+}
+
+// Get unique user ID for Firebase storage
+function getUserId() {
+    if (!currentUser) return null;
+    // Create a safe key from email
+    return currentUser.email.replace(/[.#$[\]]/g, '_');
+}
+
+// Sync user data to cloud
+async function syncUserDataToCloud() {
+    if (!isFirebaseReady || !currentUser) return false;
+    
+    try {
+        pendingSync = true;
+        const userId = getUserId();
+        const timestamp = Date.now();
+        
+        const userData = {
+            profile: currentUser,
+            chats: chats,
+            memory: userMemory[currentUser.email] || {},
+            settings: conversationSettings,
+            summaries: conversationSummaries,
+            lastUpdated: timestamp,
+            deviceInfo: {
+                userAgent: navigator.userAgent,
+                timestamp: timestamp
+            }
+        };
+        
+        await firebaseDB.ref(`users/${userId}`).set(userData);
+        localStorage.setItem('talkie-last-sync', timestamp.toString());
+        lastSyncTime = timestamp.toString();
+        pendingSync = false;
+        
+        console.log('Data synced to cloud successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to sync data to cloud:', error);
+        pendingSync = false;
+        showToast('Failed to sync data to cloud', 'error');
+        return false;
+    }
+}
+
+// Sync user data from cloud
+async function syncUserDataFromCloud() {
+    if (!isFirebaseReady || !currentUser) return false;
+    
+    try {
+        const userId = getUserId();
+        const snapshot = await firebaseDB.ref(`users/${userId}`).once('value');
+        
+        if (snapshot.exists()) {
+            const cloudData = snapshot.val();
+            const cloudTimestamp = cloudData.lastUpdated || 0;
+            const localTimestamp = parseInt(lastSyncTime || '0');
+            
+            // If cloud data is newer, use it
+            if (cloudTimestamp > localTimestamp) {
+                await handleCloudDataUpdate(cloudData);
+                showToast('Data synced from cloud!', 'success');
+                return true;
+            } else {
+                // Local data is newer, sync to cloud
+                await syncUserDataToCloud();
+                return true;
+            }
+        } else {
+            // No cloud data exists, sync current data to cloud
+            await syncUserDataToCloud();
+            showToast('Data backed up to cloud!', 'success');
+            return true;
+        }
+        
+    } catch (error) {
+        console.error('Failed to sync data from cloud:', error);
+        showToast('Failed to sync data from cloud', 'error');
+        return false;
+    }
+}
+
+// Handle incoming cloud data updates
+async function handleCloudDataUpdate(cloudData) {
+    try {
+        // Update chats
+        if (cloudData.chats) {
+            chats = cloudData.chats;
+            localStorage.setItem('talkie-chats', JSON.stringify(chats));
+            updateChatHistory();
+        }
+        
+        // Update user memory
+        if (cloudData.memory && currentUser) {
+            userMemory[currentUser.email] = cloudData.memory;
+            localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
+        }
+        
+        // Update settings
+        if (cloudData.settings) {
+            conversationSettings = cloudData.settings;
+            localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
+        }
+        
+        // Update summaries
+        if (cloudData.summaries) {
+            conversationSummaries = cloudData.summaries;
+            localStorage.setItem('talkie-conversation-summaries', JSON.stringify(conversationSummaries));
+        }
+        
+        // Update last sync time
+        if (cloudData.lastUpdated) {
+            localStorage.setItem('talkie-last-sync', cloudData.lastUpdated.toString());
+            lastSyncTime = cloudData.lastUpdated.toString();
+        }
+        
+        console.log('Local data updated from cloud');
+        
+    } catch (error) {
+        console.error('Error handling cloud data update:', error);
+    }
+}
+
+// Enhanced save functions that trigger cloud sync
+function saveChats() {
+    localStorage.setItem('talkie-chats', JSON.stringify(chats));
+    
+    // Trigger cloud sync if user is logged in
+    if (currentUser && isFirebaseReady) {
+        debouncedCloudSync();
+    }
+}
+
+function saveUserMemory() {
+    try {
+        localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
+        
+        // Trigger cloud sync if user is logged in
+        if (currentUser && isFirebaseReady) {
+            debouncedCloudSync();
+        }
+    } catch (error) {
+        console.error('Error saving user memory:', error);
+    }
+}
+
+function saveConversationSettings() {
+    try {
+        localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
+        
+        // Trigger cloud sync if user is logged in
+        if (currentUser && isFirebaseReady) {
+            debouncedCloudSync();
+        }
+    } catch (error) {
+        console.error('Error saving conversation settings:', error);
+    }
+}
+
+// Debounced cloud sync to avoid too frequent updates
+let syncTimeout = null;
+function debouncedCloudSync() {
+    if (syncTimeout) {
+        clearTimeout(syncTimeout);
+    }
+    
+    syncTimeout = setTimeout(() => {
+        syncUserDataToCloud();
+    }, 2000); // Wait 2 seconds before syncing
+}
 
 // Google OAuth initialization
 function initializeGoogleAuth() {
@@ -186,7 +433,14 @@ function handleGoogleSignIn(response) {
                 createdAt: new Date().toISOString(),
                 isPro: false,
                 isAdmin: false,
-                authProvider: 'google'
+                isOwner: false,
+                authProvider: 'google',
+                restrictions: {
+                    maxChatsPerDay: 50,
+                    maxMessagesPerChat: 100,
+                    canExportData: true,
+                    canUploadImages: true
+                }
             };
             localStorage.setItem('talkie-users', JSON.stringify(users));
         } else {
@@ -204,7 +458,13 @@ function handleGoogleSignIn(response) {
             isPro: users[googleUser.email].isPro || false,
             isAdmin: users[googleUser.email].isAdmin || false,
             isOwner: users[googleUser.email].isOwner || false,
-            profilePhoto: googleUser.profilePhoto
+            profilePhoto: googleUser.profilePhoto,
+            restrictions: users[googleUser.email].restrictions || {
+                maxChatsPerDay: 50,
+                maxMessagesPerChat: 100,
+                canExportData: true,
+                canUploadImages: true
+            }
         };
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
 
@@ -218,6 +478,17 @@ function handleGoogleSignIn(response) {
         updateUserInterface();
         initializeTheme();
         showToast(`Welcome, ${googleUser.name}!`, 'success');
+        
+        // Initialize memory system for this user
+        initializeMemorySystem();
+        
+        // Sync data from cloud if available
+        if (isFirebaseReady) {
+            setupRealtimeListeners();
+            setTimeout(() => {
+                syncUserDataFromCloud();
+            }, 1000);
+        }
 
     } catch (error) {
         console.error('Google Sign-In error:', error);
@@ -1179,7 +1450,15 @@ function handleSignup(event) {
         password: hashedPassword,
         createdAt: new Date().toISOString(),
         isPro: false,
-        profilePhoto: null
+        isAdmin: false,
+        isOwner: false,
+        profilePhoto: null,
+        restrictions: {
+            maxChatsPerDay: 50,
+            maxMessagesPerChat: 100,
+            canExportData: true,
+            canUploadImages: true
+        }
     };
     
     // Save user
@@ -1187,7 +1466,15 @@ function handleSignup(event) {
     localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
     
     // Log in the user
-    currentUser = { name, email, isPro: false, isAdmin: false, isOwner: false, profilePhoto: null };
+    currentUser = { 
+        name, 
+        email, 
+        isPro: false, 
+        isAdmin: false, 
+        isOwner: false, 
+        profilePhoto: null,
+        restrictions: newUser.restrictions
+    };
     localStorage.setItem('talkie-user', JSON.stringify(currentUser));
     
     // Check for pending pro upgrade
@@ -1199,6 +1486,17 @@ function handleSignup(event) {
     hideAuthModal();
     updateUserInterface();
     showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+    
+    // Initialize memory system for new user
+    initializeMemorySystem();
+    
+    // Sync new user data to cloud if available
+    if (isFirebaseReady) {
+        setupRealtimeListeners();
+        setTimeout(() => {
+            syncUserDataToCloud();
+        }, 1000);
+    }
 }
 
 function handleLogin(event) {
@@ -1252,6 +1550,17 @@ function handleLogin(event) {
         updateUserInterface();
         initializeTheme(); // Refresh theme options for potential Pro user
         showToast(`Welcome back, ${user.name}!`, 'success');
+        
+        // Initialize memory system for this user
+        initializeMemorySystem();
+        
+        // Sync data from cloud if available
+        if (isFirebaseReady) {
+            setupRealtimeListeners();
+            setTimeout(() => {
+                syncUserDataFromCloud();
+            }, 1000);
+        }
         
     } catch (error) {
         console.error('Login error:', error);
@@ -1369,6 +1678,53 @@ function setupEventListeners() {
     });
 
     document.addEventListener('keydown', handleKeyboardShortcuts);
+    
+    // Sync status event listeners
+    const syncStatusBtn = document.getElementById('syncStatus');
+    const forceSyncBtn = document.getElementById('forceSyncBtn');
+    const clearLocalDataBtn = document.getElementById('clearLocalDataBtn');
+    
+    if (syncStatusBtn) {
+        syncStatusBtn.addEventListener('click', toggleSyncStatus);
+    }
+    
+    if (forceSyncBtn) {
+        forceSyncBtn.addEventListener('click', forceSync);
+    }
+    
+    if (clearLocalDataBtn) {
+        clearLocalDataBtn.addEventListener('click', clearLocalData);
+    }
+    
+    // Restrictions management event listeners
+    const editRestrictionsBtn = document.getElementById('editRestrictionsBtn');
+    const closeRestrictionsModal = document.getElementById('closeRestrictionsModal');
+    const restrictionsForm = document.getElementById('restrictionsForm');
+    const restrictionsModalOverlay = document.getElementById('restrictionsModalOverlay');
+    
+    if (editRestrictionsBtn) {
+        editRestrictionsBtn.addEventListener('click', showRestrictionsModal);
+    }
+    
+    if (closeRestrictionsModal) {
+        closeRestrictionsModal.addEventListener('click', hideRestrictionsModal);
+    }
+    
+    if (restrictionsForm) {
+        restrictionsForm.addEventListener('submit', handleRestrictionsUpdate);
+    }
+    
+    if (restrictionsModalOverlay) {
+        restrictionsModalOverlay.addEventListener('click', (e) => {
+            if (e.target === restrictionsModalOverlay) {
+                hideRestrictionsModal();
+            }
+        });
+    }
+    
+    // Update sync status indicator
+    updateSyncStatusIndicator();
+}
 }
 
 function handleKeyboardShortcuts(e) {
@@ -3801,4 +4157,398 @@ function importData(event) {
     reader.readAsText(file);
     // Reset file input
     event.target.value = '';
+}
+
+// Sync Status Management
+function updateSyncStatusIndicator() {
+    const syncIcon = document.getElementById('syncIcon');
+    const syncText = document.getElementById('syncText');
+    const syncStatus = document.getElementById('syncStatus');
+    
+    if (!syncIcon || !syncText || !syncStatus) return;
+    
+    if (!currentUser) {
+        syncIcon.className = 'fas fa-user-slash';
+        syncText.textContent = 'Guest';
+        syncStatus.className = 'sync-status offline';
+        syncStatus.title = 'Guest mode - Sign in to enable cloud sync';
+        return;
+    }
+    
+    if (!isFirebaseReady) {
+        syncIcon.className = 'fas fa-wifi-slash';
+        syncText.textContent = 'Offline';
+        syncStatus.className = 'sync-status offline';
+        syncStatus.title = 'Cloud sync unavailable - Data stored locally only';
+        return;
+    }
+    
+    if (pendingSync) {
+        syncIcon.className = 'fas fa-sync';
+        syncText.textContent = 'Syncing';
+        syncStatus.className = 'sync-status syncing';
+        syncStatus.title = 'Syncing data to cloud...';
+        return;
+    }
+    
+    syncIcon.className = 'fas fa-cloud-upload-alt';
+    syncText.textContent = 'Synced';
+    syncStatus.className = 'sync-status online';
+    const lastSyncDate = lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleTimeString() : 'Never';
+    syncStatus.title = `Last synced: ${lastSyncDate}`;
+}
+
+function toggleSyncStatus() {
+    if (!currentUser) {
+        showToast('Please sign in to use cloud sync', 'info');
+        return;
+    }
+    
+    if (!isFirebaseReady) {
+        showToast('Cloud sync is currently unavailable', 'warning');
+        return;
+    }
+    
+    forceSync();
+}
+
+async function forceSync() {
+    if (!currentUser) {
+        showToast('Please sign in to sync data', 'info');
+        return;
+    }
+    
+    if (!isFirebaseReady) {
+        showToast('Cloud sync is currently unavailable', 'warning');
+        return;
+    }
+    
+    updateSyncStatusIndicator();
+    
+    try {
+        const success = await syncUserDataToCloud();
+        if (success) {
+            showToast('Data synced to cloud successfully!', 'success');
+        } else {
+            showToast('Failed to sync data to cloud', 'error');
+        }
+    } catch (error) {
+        console.error('Force sync error:', error);
+        showToast('Failed to sync data to cloud', 'error');
+    }
+    
+    updateSyncStatusIndicator();
+}
+
+function clearLocalData() {
+    if (!confirm('Clear all local data? This will remove all chats, settings, and memory from this device. Cloud data will not be affected.')) {
+        return;
+    }
+    
+    try {
+        // Clear all local storage data
+        localStorage.removeItem('talkie-chats');
+        localStorage.removeItem('talkie-user-memory');
+        localStorage.removeItem('talkie-conversation-settings');
+        localStorage.removeItem('talkie-conversation-summaries');
+        localStorage.removeItem('talkie-last-sync');
+        
+        // Reset local variables
+        chats = {};
+        userMemory = {};
+        conversationSettings = {
+            contextLength: 10,
+            responseStyle: 'balanced',
+            enableMemory: true,
+            enableFollowUps: true,
+            personalityMode: 'friendly',
+            rememberPreferences: true,
+            enableWebSearch: true,
+            searchBehavior: 'auto',
+            showSearchResults: true
+        };
+        conversationSummaries = {};
+        lastSyncTime = null;
+        
+        // Update UI
+        showWelcomeScreen();
+        updateChatHistory();
+        updateSyncStatusIndicator();
+        
+        // Sync from cloud if available
+        if (currentUser && isFirebaseReady) {
+            setTimeout(() => {
+                syncUserDataFromCloud();
+            }, 1000);
+        }
+        
+        showToast('Local data cleared. Syncing from cloud...', 'success');
+        
+    } catch (error) {
+        console.error('Error clearing local data:', error);
+        showToast('Failed to clear local data', 'error');
+    }
+}
+
+// User Restrictions Management
+let selectedUserForRestrictions = null;
+
+function showRestrictionsModal() {
+    if (!selectedUserEmail) {
+        showToast('Please select a user first', 'warning');
+        return;
+    }
+    
+    if (!currentUser?.isOwner && !currentUser?.isAdmin) {
+        showToast('You do not have permission to edit user restrictions', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserEmail];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    selectedUserForRestrictions = selectedUserEmail;
+    
+    // Populate form with current restrictions
+    const restrictions = user.restrictions || {
+        maxChatsPerDay: 50,
+        maxMessagesPerChat: 100,
+        canExportData: true,
+        canUploadImages: true,
+        canAccessAdvancedSettings: true,
+        canUseVoiceInput: true
+    };
+    
+    document.getElementById('maxChatsPerDay').value = restrictions.maxChatsPerDay || 50;
+    document.getElementById('maxMessagesPerChat').value = restrictions.maxMessagesPerChat || 100;
+    document.getElementById('canExportData').checked = restrictions.canExportData !== false;
+    document.getElementById('canUploadImages').checked = restrictions.canUploadImages !== false;
+    document.getElementById('canAccessAdvancedSettings').checked = restrictions.canAccessAdvancedSettings !== false;
+    document.getElementById('canUseVoiceInput').checked = restrictions.canUseVoiceInput !== false;
+    document.getElementById('customRestriction').value = restrictions.customNote || '';
+    
+    // Update modal header
+    document.getElementById('restrictionsUserInfo').textContent = `Manage restrictions for ${user.name} (${user.email})`;
+    
+    // Show modal
+    document.getElementById('restrictionsModalOverlay').classList.add('active');
+    document.getElementById('restrictionsModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function hideRestrictionsModal() {
+    document.getElementById('restrictionsModalOverlay').classList.remove('active');
+    document.getElementById('restrictionsModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+    selectedUserForRestrictions = null;
+}
+
+function handleRestrictionsUpdate(event) {
+    event.preventDefault();
+    
+    if (!selectedUserForRestrictions) return;
+    
+    if (!currentUser?.isOwner && !currentUser?.isAdmin) {
+        showToast('You do not have permission to edit user restrictions', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserForRestrictions];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    // Update restrictions
+    const newRestrictions = {
+        maxChatsPerDay: parseInt(document.getElementById('maxChatsPerDay').value),
+        maxMessagesPerChat: parseInt(document.getElementById('maxMessagesPerChat').value),
+        canExportData: document.getElementById('canExportData').checked,
+        canUploadImages: document.getElementById('canUploadImages').checked,
+        canAccessAdvancedSettings: document.getElementById('canAccessAdvancedSettings').checked,
+        canUseVoiceInput: document.getElementById('canUseVoiceInput').checked,
+        customNote: document.getElementById('customRestriction').value.trim(),
+        lastUpdated: new Date().toISOString(),
+        updatedBy: currentUser.email
+    };
+    
+    user.restrictions = newRestrictions;
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    // Update current user if it's the same
+    if (selectedUserForRestrictions === currentUser?.email) {
+        currentUser.restrictions = newRestrictions;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+    }
+    
+    hideRestrictionsModal();
+    displayUserDetails(user); // Refresh user details display
+    showToast(`Restrictions updated for ${user.name}`, 'success');
+}
+
+function displayUserRestrictions(user) {
+    const restrictionsContainer = document.getElementById('userRestrictions');
+    if (!restrictionsContainer) return;
+    
+    const restrictions = user.restrictions || {};
+    
+    let restrictionsHtml = '<h5 style="margin-bottom: 8px; color: var(--text-secondary);">Current Restrictions:</h5>';
+    
+    restrictionsHtml += `
+        <div class="restriction-item">
+            <span class="restriction-label">Max Chats/Day:</span>
+            <span class="restriction-value ${restrictions.maxChatsPerDay < 20 ? 'limited' : ''}">${restrictions.maxChatsPerDay || 50}</span>
+        </div>
+        <div class="restriction-item">
+            <span class="restriction-label">Max Messages/Chat:</span>
+            <span class="restriction-value ${restrictions.maxMessagesPerChat < 50 ? 'limited' : ''}">${restrictions.maxMessagesPerChat || 100}</span>
+        </div>
+        <div class="restriction-item">
+            <span class="restriction-label">Export Data:</span>
+            <span class="restriction-value ${!restrictions.canExportData ? 'blocked' : ''}">${restrictions.canExportData !== false ? 'Allowed' : 'Blocked'}</span>
+        </div>
+        <div class="restriction-item">
+            <span class="restriction-label">Upload Images:</span>
+            <span class="restriction-value ${!restrictions.canUploadImages ? 'blocked' : ''}">${restrictions.canUploadImages !== false ? 'Allowed' : 'Blocked'}</span>
+        </div>
+        <div class="restriction-item">
+            <span class="restriction-label">Voice Input:</span>
+            <span class="restriction-value ${!restrictions.canUseVoiceInput ? 'blocked' : ''}">${restrictions.canUseVoiceInput !== false ? 'Allowed' : 'Blocked'}</span>
+        </div>
+    `;
+    
+    if (restrictions.customNote) {
+        restrictionsHtml += `
+            <div class="restriction-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light);">
+                <span class="restriction-label">Note:</span>
+                <span class="restriction-value" style="font-style: italic;">${restrictions.customNote}</span>
+            </div>
+        `;
+    }
+    
+    restrictionsContainer.innerHTML = restrictionsHtml;
+}
+
+// Update the displayUserDetails function to include restrictions
+function displayUserDetails(user) {
+    document.getElementById('selectedUserName').textContent = user.name;
+    document.getElementById('selectedUserEmail').textContent = user.email;
+    
+    const roleElement = document.getElementById('selectedUserRole');
+    const proElement = document.getElementById('selectedUserPro');
+    
+    // Set role badge
+    if (user.isOwner) {
+        roleElement.textContent = 'Owner';
+        roleElement.className = 'role-badge owner';
+    } else if (user.isAdmin) {
+        roleElement.textContent = 'Admin';
+        roleElement.className = 'role-badge admin';
+    } else {
+        roleElement.textContent = 'Regular';
+        roleElement.className = 'role-badge';
+    }
+    
+    // Set pro badge
+    if (user.isPro) {
+        proElement.style.display = 'inline-block';
+        proElement.textContent = 'Pro';
+    } else {
+        proElement.style.display = 'none';
+    }
+    
+    // Display restrictions
+    displayUserRestrictions(user);
+    
+    // Update button states
+    document.getElementById('toggleProBtn').textContent = user.isPro ? 'Remove Pro' : 'Grant Pro';
+    document.getElementById('toggleAdminBtn').textContent = user.isAdmin ? 'Remove Admin' : 'Grant Admin';
+    
+    // Disable admin toggle for owner
+    const adminBtn = document.getElementById('toggleAdminBtn');
+    if (user.isOwner) {
+        adminBtn.disabled = true;
+        adminBtn.textContent = 'Owner (Cannot Change)';
+    } else {
+        adminBtn.disabled = false;
+    }
+    
+    // Disable delete for owner and current user
+    const deleteBtn = document.getElementById('deleteUserBtn');
+    if (user.isOwner || selectedUserEmail === currentUser?.email) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = user.isOwner ? 'Owner (Cannot Delete)' : 'You (Cannot Delete)';
+    } else {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = 'Delete User';
+    }
+    
+    document.getElementById('userDetails').style.display = 'block';
+}
+
+// Enhanced settings modal with sync info
+function showSettingsModal() {
+    settingsModalOverlay.classList.add('active');
+    settingsModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Populate current settings
+    document.getElementById('contextLength').value = conversationSettings.contextLength || 10;
+    document.getElementById('responseStyle').value = conversationSettings.responseStyle || 'balanced';
+    document.getElementById('personalityMode').value = conversationSettings.personalityMode || 'friendly';
+    document.getElementById('enableMemory').checked = conversationSettings.enableMemory !== false;
+    document.getElementById('enableFollowUps').checked = conversationSettings.enableFollowUps !== false;
+    document.getElementById('rememberPreferences').checked = conversationSettings.rememberPreferences !== false;
+    document.getElementById('enableWebSearch').checked = conversationSettings.enableWebSearch !== false;
+    document.getElementById('searchBehavior').value = conversationSettings.searchBehavior || 'auto';
+    document.getElementById('showSearchResults').checked = conversationSettings.showSearchResults !== false;
+    
+    // Update sync info
+    updateSyncInfo();
+    
+    // Update memory info
+    updateMemoryInfo();
+    
+    // Add event listeners for settings
+    setupSettingsEventListeners();
+}
+
+function updateSyncInfo() {
+    const syncStatusText = document.getElementById('syncStatusText');
+    const lastSyncText = document.getElementById('lastSyncText');
+    
+    if (!syncStatusText || !lastSyncText) return;
+    
+    if (!currentUser) {
+        syncStatusText.textContent = 'Not signed in';
+        lastSyncText.textContent = 'Sign in required';
+        return;
+    }
+    
+    if (!isFirebaseReady) {
+        syncStatusText.textContent = 'Offline (Local storage only)';
+        lastSyncText.textContent = 'Cloud sync unavailable';
+        return;
+    }
+    
+    if (pendingSync) {
+        syncStatusText.textContent = 'Syncing...';
+        lastSyncText.textContent = 'In progress';
+        return;
+    }
+    
+    syncStatusText.textContent = 'Online (Cloud sync active)';
+    if (lastSyncTime) {
+        const lastSyncDate = new Date(parseInt(lastSyncTime));
+        lastSyncText.textContent = lastSyncDate.toLocaleString();
+    } else {
+        lastSyncText.textContent = 'Never';
+    }
 }

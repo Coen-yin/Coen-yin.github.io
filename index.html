@@ -11,6 +11,11 @@
     
     <!-- Google Sign-In API -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 </head>
 <body>
     <!-- Main Container -->
@@ -108,6 +113,10 @@
                     </div>
                 </div>
                 <div class="header-actions">
+                    <div class="sync-status" id="syncStatus" title="Data sync status">
+                        <i class="fas fa-cloud-upload-alt" id="syncIcon"></i>
+                        <span id="syncText">Local</span>
+                    </div>
                     <button class="header-btn" id="docsBtn" title="Documentation">
                         <i class="fas fa-book"></i>
                     </button>
@@ -322,6 +331,9 @@
                                         <span id="selectedUserRole" class="role-badge">Regular</span>
                                         <span id="selectedUserPro" class="pro-badge" style="display: none;">Pro</span>
                                     </div>
+                                    <div class="user-restrictions" id="userRestrictions">
+                                        <!-- User restrictions will be populated here -->
+                                    </div>
                                 </div>
                                 <div class="user-actions">
                                     <button id="toggleProBtn" class="admin-action-btn">
@@ -331,6 +343,10 @@
                                     <button id="toggleAdminBtn" class="admin-action-btn">
                                         <i class="fas fa-shield-alt"></i>
                                         Toggle Admin
+                                    </button>
+                                    <button id="editRestrictionsBtn" class="admin-action-btn">
+                                        <i class="fas fa-edit"></i>
+                                        Edit Restrictions
                                     </button>
                                     <button id="deleteUserBtn" class="admin-action-btn danger">
                                         <i class="fas fa-trash"></i>
@@ -538,6 +554,74 @@
         </div>
     </div>
 
+    <!-- User Restrictions Modal -->
+    <div class="modal-overlay" id="restrictionsModalOverlay">
+        <div class="auth-modal" id="restrictionsModal">
+            <div class="modal-header">
+                <h2>Edit User Restrictions</h2>
+                <p id="restrictionsUserInfo">Manage restrictions for user</p>
+                <button class="modal-close" id="closeRestrictionsModal">&times;</button>
+            </div>
+            <form class="auth-form" id="restrictionsForm">
+                <div class="form-group">
+                    <label for="maxChatsPerDay">Max Chats Per Day</label>
+                    <input type="number" id="maxChatsPerDay" min="1" max="1000" required>
+                    <small>Maximum number of new chats the user can create per day</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="maxMessagesPerChat">Max Messages Per Chat</label>
+                    <input type="number" id="maxMessagesPerChat" min="1" max="1000" required>
+                    <small>Maximum number of messages allowed in a single chat</small>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Feature Permissions</h4>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="canExportData">
+                            <span class="toggle-slider"></span>
+                            Can Export Data
+                        </label>
+                        <small>Allow user to export their conversations and data</small>
+                    </div>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="canUploadImages">
+                            <span class="toggle-slider"></span>
+                            Can Upload Images
+                        </label>
+                        <small>Allow user to upload images for analysis</small>
+                    </div>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="canAccessAdvancedSettings">
+                            <span class="toggle-slider"></span>
+                            Advanced Settings Access
+                        </label>
+                        <small>Allow user to access advanced conversation settings</small>
+                    </div>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="canUseVoiceInput">
+                            <span class="toggle-slider"></span>
+                            Voice Input
+                        </label>
+                        <small>Allow user to use voice input features</small>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customRestriction">Custom Restriction Note</label>
+                    <textarea id="customRestriction" placeholder="Add any custom restrictions or notes..." maxlength="500"></textarea>
+                    <small>Optional note about specific restrictions for this user</small>
+                </div>
+                
+                <button type="submit" class="auth-btn">Save Restrictions</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Enhanced Settings Modal -->
     <div class="modal-overlay" id="settingsModalOverlay">
         <div class="auth-modal" id="settingsModal" style="max-width: 600px;">
@@ -547,6 +631,29 @@
                 <button class="modal-close" id="closeSettingsModal">&times;</button>
             </div>
             <div class="settings-content">
+                <div class="sync-section" id="syncSection">
+                    <h3>Data Sync</h3>
+                    <div class="sync-info">
+                        <div class="sync-status-info">
+                            <span class="sync-label">Sync Status:</span>
+                            <span class="sync-value" id="syncStatusText">Checking...</span>
+                        </div>
+                        <div class="sync-status-info">
+                            <span class="sync-label">Last Sync:</span>
+                            <span class="sync-value" id="lastSyncText">Never</span>
+                        </div>
+                    </div>
+                    <div class="sync-actions">
+                        <button class="memory-btn" id="forceSyncBtn">
+                            <i class="fas fa-sync"></i>
+                            Force Sync Now
+                        </button>
+                        <button class="memory-btn secondary" id="clearLocalDataBtn">
+                            <i class="fas fa-trash"></i>
+                            Clear Local Data
+                        </button>
+                    </div>
+                </div>
                 <div class="settings-section">
                     <h3>Context & Memory</h3>
                     <div class="setting-item">
