@@ -22,7 +22,7 @@ In `script.js`, update the Appwrite configuration:
 ```javascript
 // Appwrite Configuration
 const APPWRITE_PROJECT_ID = 'your-actual-project-id'; // Replace with your project ID
-const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
+const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 ```
 
 ### Add Platform (Web App)
