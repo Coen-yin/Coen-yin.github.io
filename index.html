@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Google Sign-In API -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Appwrite SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
 </head>
 <body>
     <!-- Main Container -->
@@ -478,11 +478,8 @@
                 <p>Sign in to your account</p>
                 <button class="modal-close" id="closeLoginModal">&times;</button>
             </div>
-            <div class="google-auth-section">
-                <div id="google-signin-login" class="google-signin-btn"></div>
-                <div class="auth-divider">
-                    <span>or</span>
-                </div>
+            <div class="auth-divider">
+                <span>Sign in with email and password</span>
             </div>
             <form class="auth-form" id="loginForm">
                 <div class="form-group">
@@ -507,11 +504,8 @@
                 <p>Join Talkie Gen AI today</p>
                 <button class="modal-close" id="closeSignupModal">&times;</button>
             </div>
-            <div class="google-auth-section">
-                <div id="google-signin-signup" class="google-signin-btn"></div>
-                <div class="auth-divider">
-                    <span>or</span>
-                </div>
+            <div class="auth-divider">
+                <span>Create account with email and password</span>
             </div>
             <form class="auth-form" id="signupForm">
                 <div class="form-group">

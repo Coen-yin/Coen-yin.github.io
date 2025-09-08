@@ -2,6 +2,29 @@
 const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
+// Appwrite Configuration
+const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
+const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
+
+// Initialize Appwrite client
+let appwriteClient = null;
+let appwriteAccount = null;
+let appwriteDatabases = null;
+
+// Check if Appwrite is available
+if (typeof Appwrite !== 'undefined') {
+    const { Client, Account, Databases, Storage, Teams } = Appwrite;
+    appwriteClient = new Client();
+    appwriteClient
+        .setEndpoint(APPWRITE_ENDPOINT)
+        .setProject(APPWRITE_PROJECT_ID);
+
+    appwriteAccount = new Account(appwriteClient);
+    appwriteDatabases = new Databases(appwriteClient);
+} else {
+    console.warn('Appwrite SDK not loaded - authentication will be disabled');
+}
+
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -105,9 +128,8 @@ let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
-    initializeAuth();
+    initializeAppwrite(); // Initialize Appwrite auth
     initializeAdmin(); // Initialize admin system
-    initializeGoogleAuth(); // Initialize Google OAuth
     trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
     initializeMemorySystem(); // Initialize enhanced memory system
@@ -117,169 +139,69 @@ document.addEventListener('DOMContentLoaded', () => {
     autoResizeTextarea();
 });
 
-// Google OAuth initialization
-function initializeGoogleAuth() {
-    if (typeof google !== 'undefined' && google.accounts) {
-        // Initialize Google Identity Services
-        google.accounts.id.initialize({
-            client_id: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Demo client ID
-            callback: handleGoogleSignIn,
-            auto_select: false,
-            cancel_on_tap_outside: true
-        });
-
-        // Render sign-in buttons
-        renderGoogleSignInButtons();
-    } else {
-        console.log('Google Identity Services not loaded');
+// Appwrite authentication initialization
+async function initializeAppwrite() {
+    if (!appwriteAccount) {
+        console.warn('Appwrite not available - skipping authentication initialization');
+        return;
     }
-}
-
-function renderGoogleSignInButtons() {
-    // Render Google Sign-In button for login modal
-    const loginButton = document.getElementById('google-signin-login');
-    if (loginButton) {
-        google.accounts.id.renderButton(loginButton, {
-            theme: 'outline',
-            size: 'large',
-            width: '100%',
-            text: 'signin_with',
-            shape: 'rectangular'
-        });
-    }
-
-    // Render Google Sign-In button for signup modal
-    const signupButton = document.getElementById('google-signin-signup');
-    if (signupButton) {
-        google.accounts.id.renderButton(signupButton, {
-            theme: 'outline',
-            size: 'large',
-            width: '100%',
-            text: 'signup_with',
-            shape: 'rectangular'
-        });
-    }
-}
-
-function handleGoogleSignIn(response) {
+    
     try {
-        // Decode the JWT token
-        const payload = JSON.parse(atob(response.credential.split('.')[1]));
-        
-        const googleUser = {
-            email: payload.email,
-            name: payload.name,
-            profilePhoto: payload.picture,
-            googleId: payload.sub
-        };
-
-        // Check if user exists
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        
-        if (!users[googleUser.email]) {
-            // Create new user account
-            users[googleUser.email] = {
-                name: googleUser.name,
-                email: googleUser.email,
-                googleId: googleUser.googleId,
-                profilePhoto: googleUser.profilePhoto,
-                createdAt: new Date().toISOString(),
+        // Check if user is already logged in
+        const session = await appwriteAccount.get();
+        if (session) {
+            currentUser = {
+                name: session.name,
+                email: session.email,
+                appwriteId: session.$id,
                 isPro: false,
                 isAdmin: false,
-                authProvider: 'google'
+                isOwner: session.email === 'coenyin9@gmail.com',
+                profilePhoto: session.prefs?.profilePhoto || null
             };
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-        } else {
-            // Update existing user with Google info
-            users[googleUser.email].googleId = googleUser.googleId;
-            users[googleUser.email].profilePhoto = googleUser.profilePhoto;
-            users[googleUser.email].authProvider = 'google';
-            localStorage.setItem('talkie-users', JSON.stringify(users));
+            
+            // Set admin/owner status for the owner account
+            if (currentUser.isOwner) {
+                currentUser.isAdmin = true;
+                currentUser.isPro = true;
+            }
+            
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
+            initializeTheme();
+            console.log('User already logged in:', currentUser.email);
         }
-
-        // Log in the user
-        currentUser = {
-            name: googleUser.name,
-            email: googleUser.email,
-            isPro: users[googleUser.email].isPro || false,
-            isAdmin: users[googleUser.email].isAdmin || false,
-            isOwner: users[googleUser.email].isOwner || false,
-            profilePhoto: googleUser.profilePhoto
-        };
-        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-
-        // Check for pending pro upgrade
-        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-            sessionStorage.removeItem('pendingProUpgrade');
-            upgradeToPro();
-        }
-
-        hideAuthModal();
-        updateUserInterface();
-        initializeTheme();
-        showToast(`Welcome, ${googleUser.name}!`, 'success');
-
     } catch (error) {
-        console.error('Google Sign-In error:', error);
-        showToast('Google Sign-In failed. Please try again.', 'error');
+        // User not logged in, which is fine
+        console.log('No active session found');
+        currentUser = null;
+        localStorage.removeItem('talkie-user');
+        updateUserInterface();
     }
+}
+
+// Initialize authentication system
+function initializeAuth() {
+    updateUserInterface();
 }
 
 // Initialize admin system
-function initializeAdmin() {
+async function initializeAdmin() {
     try {
-        // Create admin account if it doesn't exist
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const adminEmail = 'coenyin9@gmail.com';
+        // The owner account will be created through normal signup process
+        // This function now just ensures the owner gets proper privileges when they log in
+        console.log('Admin system initialized. Owner account: coenyin9@gmail.com');
         
-        // Always ensure admin account exists with correct properties - now as OWNER
-        if (!users[adminEmail]) {
-            const hashedPassword = hashPassword('Carronshore93');
-            users[adminEmail] = {
-                name: 'Coen Yin',
-                email: adminEmail,
-                password: hashedPassword,
-                createdAt: new Date().toISOString(),
-                isPro: true,
-                isAdmin: true,
-                isOwner: true, // Owner role
-                profilePhoto: null
-            };
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-            console.log('Owner account created successfully');
-        } else {
-            // Ensure existing admin account has all required properties
-            if (!users[adminEmail].isOwner) {
-                users[adminEmail].isOwner = true;
-                users[adminEmail].isAdmin = true;
-                users[adminEmail].isPro = true;
-                localStorage.setItem('talkie-users', JSON.stringify(users));
-                console.log('Owner account permissions updated');
-            }
+        // If current user is the owner, ensure they have proper privileges
+        if (currentUser && currentUser.email === 'coenyin9@gmail.com') {
+            currentUser.isOwner = true;
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
         }
     } catch (error) {
-        console.error('Error initializing admin account:', error);
-        // Force create owner account as fallback
-        try {
-            const adminEmail = 'coenyin9@gmail.com';
-            const hashedPassword = hashPassword('Carronshore93');
-            const users = {
-                [adminEmail]: {
-                    name: 'Coen Yin',
-                    email: adminEmail,
-                    password: hashedPassword,
-                    createdAt: new Date().toISOString(),
-                    isPro: true,
-                    isAdmin: true,
-                    isOwner: true,
-                    profilePhoto: null
-                }
-            };
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-            console.log('Owner account force-created as fallback');
-        } catch (fallbackError) {
-            console.error('Failed to create owner account fallback:', fallbackError);
-        }
+        console.error('Error initializing admin system:', error);
     }
 }
 
@@ -1128,19 +1050,9 @@ function hideAuthModal() {
     signupForm.reset();
 }
 
-function hashPassword(password) {
-    // Simple hash function for demo purposes - NOT secure for production
-    let hash = 0;
-    if (password.length === 0) return hash;
-    for (let i = 0; i < password.length; i++) {
-        const char = password.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString();
-}
+// hashPassword function removed - Appwrite handles password hashing automatically
 
-function handleSignup(event) {
+async function handleSignup(event) {
     event.preventDefault();
     
     const name = document.getElementById('signupName').value.trim();
@@ -1164,44 +1076,73 @@ function handleSignup(event) {
         return;
     }
     
-    // Check if user already exists
-    const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-    if (existingUsers[email]) {
-        showToast('An account with this email already exists', 'error');
+    if (!appwriteAccount) {
+        showToast('Authentication service unavailable. Please try again later.', 'error');
         return;
     }
     
-    // Create new user
-    const hashedPassword = hashPassword(password);
-    const newUser = {
-        name,
-        email,
-        password: hashedPassword,
-        createdAt: new Date().toISOString(),
-        isPro: false,
-        profilePhoto: null
-    };
-    
-    // Save user
-    existingUsers[email] = newUser;
-    localStorage.setItem('talkie-users', JSON.stringify(existingUsers));
-    
-    // Log in the user
-    currentUser = { name, email, isPro: false, isAdmin: false, isOwner: false, profilePhoto: null };
-    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-    
-    // Check for pending pro upgrade
-    if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-        sessionStorage.removeItem('pendingProUpgrade');
-        upgradeToPro();
+    try {
+        // Create account with Appwrite
+        const response = await appwriteAccount.create(
+            'unique()', // Let Appwrite generate ID
+            email,
+            password,
+            name
+        );
+        
+        console.log('Account created:', response);
+        
+        // Automatically login after successful signup
+        await appwriteAccount.createEmailSession(email, password);
+        
+        // Get user data
+        const user = await appwriteAccount.get();
+        
+        // Set up user object
+        currentUser = {
+            name: user.name,
+            email: user.email,
+            appwriteId: user.$id,
+            isPro: false,
+            isAdmin: false,
+            isOwner: email === 'coenyin9@gmail.com',
+            profilePhoto: null
+        };
+        
+        // Set admin/owner status for the owner account
+        if (currentUser.isOwner) {
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
+        }
+        
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        
+        // Check for pending pro upgrade
+        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+            sessionStorage.removeItem('pendingProUpgrade');
+            upgradeToPro();
+        }
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+        
+    } catch (error) {
+        console.error('Signup error:', error);
+        
+        // Handle specific Appwrite errors
+        if (error.code === 409) {
+            showToast('An account with this email already exists', 'error');
+        } else if (error.code === 400) {
+            showToast('Invalid email format', 'error');
+        } else {
+            showToast('Signup failed. Please try again.', 'error');
+        }
     }
-    
-    hideAuthModal();
-    updateUserInterface();
-    showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
     event.preventDefault();
     
     const email = document.getElementById('loginEmail').value.trim();
@@ -1213,33 +1154,35 @@ function handleLogin(event) {
         return;
     }
     
+    if (!appwriteAccount) {
+        showToast('Authentication service unavailable. Please try again later.', 'error');
+        return;
+    }
+    
     try {
-        // Check credentials
-        const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const user = existingUsers[email];
+        // Create session with Appwrite
+        await appwriteAccount.createEmailSession(email, password);
         
-        if (!user) {
-            // For debugging: log available users (remove in production)
-            console.log('Available users:', Object.keys(existingUsers));
-            showToast('No account found with this email. Please check your email address or create a new account.', 'error');
-            return;
-        }
+        // Get user data
+        const user = await appwriteAccount.get();
         
-        const hashedPassword = hashPassword(password);
-        if (user.password !== hashedPassword) {
-            showToast('Incorrect password. Please try again.', 'error');
-            return;
-        }
-        
-        // Log in the user
-        currentUser = { 
-            name: user.name, 
-            email: user.email, 
-            isPro: user.isPro || false,
-            isAdmin: user.isAdmin || false,
-            isOwner: user.isOwner || false,
-            profilePhoto: user.profilePhoto || null
+        // Set up user object
+        currentUser = {
+            name: user.name,
+            email: user.email,
+            appwriteId: user.$id,
+            isPro: false,
+            isAdmin: false,
+            isOwner: email === 'coenyin9@gmail.com',
+            profilePhoto: user.prefs?.profilePhoto || null
         };
+        
+        // Set admin/owner status for the owner account
+        if (currentUser.isOwner) {
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
+        }
+        
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
         
         // Check for pending pro upgrade
@@ -1255,16 +1198,41 @@ function handleLogin(event) {
         
     } catch (error) {
         console.error('Login error:', error);
-        showToast('An error occurred during login. Please refresh the page and try again.', 'error');
+        
+        // Handle specific Appwrite errors
+        if (error.code === 401) {
+            showToast('Invalid email or password', 'error');
+        } else if (error.code === 400) {
+            showToast('Invalid email format', 'error');
+        } else {
+            showToast('Login failed. Please try again.', 'error');
+        }
     }
 }
 
-function handleLogout() {
-    currentUser = null;
-    localStorage.removeItem('talkie-user');
-    updateUserInterface();
-    userDropdown.classList.remove('show');
-    showToast('You have been signed out', 'success');
+async function handleLogout() {
+    try {
+        // Delete current session in Appwrite if available
+        if (appwriteAccount) {
+            await appwriteAccount.deleteSession('current');
+        }
+        
+        // Clear local user data
+        currentUser = null;
+        localStorage.removeItem('talkie-user');
+        updateUserInterface();
+        userDropdown.classList.remove('show');
+        showToast('You have been signed out', 'success');
+        
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Force logout even if Appwrite call fails
+        currentUser = null;
+        localStorage.removeItem('talkie-user');
+        updateUserInterface();
+        userDropdown.classList.remove('show');
+        showToast('You have been signed out', 'success');
+    }
 }
 
 // Event Listeners
@@ -2617,44 +2585,55 @@ window.copyCodeBlock = copyCodeBlock;
 window.sendFollowUpQuestion = sendFollowUpQuestion;
 
 // Admin debugging function (accessible from browser console)
-window.checkAdminAccount = function() {
+window.checkAdminAccount = async function() {
     try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const adminEmail = 'coenyin9@gmail.com';
-        const adminExists = !!users[adminEmail];
+        console.log('=== APPWRITE ADMIN ACCOUNT STATUS ===');
         
-        console.log('=== ADMIN ACCOUNT STATUS ===');
-        console.log('Admin account exists:', adminExists);
-        
-        if (adminExists) {
-            const admin = users[adminEmail];
-            console.log('Admin details:', {
-                name: admin.name,
-                email: admin.email,
-                isAdmin: admin.isAdmin,
-                isPro: admin.isPro,
-                hasPassword: !!admin.password,
-                createdAt: admin.createdAt
-            });
-        } else {
-            console.log('Admin account not found. Attempting to create...');
-            initializeAdmin();
-            const updatedUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-            console.log('Admin account created:', !!updatedUsers[adminEmail]);
+        if (!appwriteAccount) {
+            console.log('❌ Appwrite SDK not loaded');
+            console.log('This usually means external resources are blocked');
+            console.log('In production, Appwrite will be available');
+            return false;
         }
         
+        try {
+            const currentSession = await appwriteAccount.get();
+            console.log('Current logged in user:', {
+                name: currentSession.name,
+                email: currentSession.email,
+                id: currentSession.$id
+            });
+            
+            if (currentSession.email === 'coenyin9@gmail.com') {
+                console.log('✅ Owner account is currently logged in');
+            } else {
+                console.log('ℹ️ Different user logged in, not the owner');
+            }
+        } catch (sessionError) {
+            console.log('No active session found');
+        }
+        
+        console.log('Expected owner email: coenyin9@gmail.com');
+        console.log('Expected password: Carronshore93');
+        console.log('');
+        console.log('To create owner account:');
+        console.log('1. Sign up with email: coenyin9@gmail.com');
+        console.log('2. Use password: Carronshore93');
+        console.log('3. Owner privileges will be automatically assigned');
+        console.log('');
         console.log('Current user logged in:', !!currentUser);
         if (currentUser) {
             console.log('Current user details:', {
                 name: currentUser.name,
                 email: currentUser.email,
                 isAdmin: currentUser.isAdmin,
-                isPro: currentUser.isPro
+                isPro: currentUser.isPro,
+                isOwner: currentUser.isOwner
             });
         }
         console.log('========================');
         
-        return adminExists;
+        return true;
     } catch (error) {
         console.error('Error checking admin account:', error);
         return false;

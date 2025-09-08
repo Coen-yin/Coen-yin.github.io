@@ -3,67 +3,74 @@
 ## Admin Account Details
 - **Email**: `coenyin9@gmail.com`
 - **Password**: `Carronshore93`
-- **Account Type**: Administrator with Pro privileges
+- **Account Type**: Owner with Administrator and Pro privileges
+- **Authentication**: Powered by Appwrite
 
 ## Quick Fix Steps
 
 If you're experiencing login issues, try these steps in order:
 
-### Step 1: Clear Browser Data
-1. Open your browser's Developer Tools (F12)
-2. Go to the **Application** or **Storage** tab
-3. Find **Local Storage** → `localhost` (or your domain)
-4. Clear all stored data
-5. Refresh the page and try logging in again
+### Step 1: Create Owner Account (First Time Setup)
+1. Go to the website and click **Sign Up**
+2. Enter the following details:
+   - **Name**: Coen Yin (or any name you prefer)
+   - **Email**: `coenyin9@gmail.com`
+   - **Password**: `Carronshore93`
+   - **Confirm Password**: `Carronshore93`
+3. Click **Create Account**
+4. Owner privileges will be automatically assigned
 
-### Step 2: Hard Refresh
+### Step 2: Sign In to Existing Account
+1. Click **Sign In** on the website
+2. Enter:
+   - **Email**: `coenyin9@gmail.com` 
+   - **Password**: `Carronshore93`
+3. Click **Sign In**
+
+### Step 3: Hard Refresh
 1. Press `Ctrl+F5` (Windows) or `Cmd+Shift+R` (Mac) to hard refresh
 2. Try logging in again
 
-### Step 3: Check Browser Console
+### Step 4: Check Browser Console
 1. Open Developer Tools (F12)
 2. Go to **Console** tab
 3. Look for any error messages
 4. Refresh the page and check console for initialization messages
 
-### Step 4: Verify Account Creation
+### Step 5: Verify Appwrite Connection
 1. Open Developer Tools (F12)
 2. Go to **Console** tab
-3. Type: `localStorage.getItem('talkie-users')`
+3. Type: `checkAdminAccount()`
 4. Press Enter
-5. You should see admin account data in the output
-
-### Step 5: Manual Account Verification
-If you want to verify the admin account exists, paste this in the browser console:
-
-```javascript
-const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-console.log('Admin account exists:', !!users['coenyin9@gmail.com']);
-console.log('Admin account details:', users['coenyin9@gmail.com']);
-```
+5. You should see Appwrite connection status and current user info
 
 ## Expected Behavior
 
 When login is successful, you should see:
 - ✅ User avatar changes from "G" (Guest) to "C" (Coen)
-- ✅ Status shows "Coen Admin Admin" (with Admin badge)
-- ✅ User status shows "Administrator"
-- ✅ Success toast: "Welcome back, Coen Admin!"
+- ✅ Status shows "Coen Yin Owner" (with Owner badge)
+- ✅ User status shows "Owner"
+- ✅ Success toast: "Welcome back, Coen Yin!"
 - ✅ Admin Panel option appears in user menu
+- ✅ Owner theme becomes available in theme toggle
 
 ## Common Issues & Solutions
 
-### Issue: "No account found with this email"
-- **Cause**: Admin account wasn't created properly
-- **Solution**: Clear localStorage and refresh page to trigger account creation
+### Issue: "Invalid email or password"
+- **Cause**: Wrong credentials or account doesn't exist in Appwrite
+- **Solution**: Create the account first using Sign Up, then try logging in
 
 ### Issue: Login button doesn't respond
-- **Cause**: JavaScript errors or blocked resources
-- **Solution**: Check console for errors, try in incognito mode
+- **Cause**: JavaScript errors or blocked Appwrite requests
+- **Solution**: Check console for errors, ensure network connectivity
 
-### Issue: Account exists but login fails
-- **Cause**: Password hashing mismatch (rare)
-- **Solution**: Clear localStorage to recreate admin account
+### Issue: Account created but no admin privileges
+- **Cause**: Different email used (case sensitive)
+- **Solution**: Must use exactly `coenyin9@gmail.com` (lowercase)
+
+### Issue: "Network error" or connection issues
+- **Cause**: Appwrite service unavailable or network restrictions
+- **Solution**: Check internet connection, try different network, or contact admin
 
 ## Browser Compatibility
 
@@ -72,21 +79,35 @@ The admin system works best with:
 - ✅ Firefox
 - ✅ Safari
 - ✅ Edge
+- ✅ All modern browsers with JavaScript enabled
 
 ## Technical Details
 
-The admin system:
-- Uses localStorage for user data storage
-- Creates admin account automatically on page load
-- Uses simple hash function for password security (demo purposes)
-- Initializes in `initializeAdmin()` function
+The admin system now:
+- Uses Appwrite for secure user authentication
+- Automatically assigns owner privileges to `coenyin9@gmail.com`
+- Stores user sessions securely in Appwrite
+- Maintains local user state for UI consistency
+- Connects to: `https://syd.cloud.appwrite.io/v1`
+- Project ID: `68bb8b8b00136de837e5`
+
+## Admin Management Features
+
+As the owner, you have access to:
+- 👥 **User Management**: View and manage all user accounts
+- 📊 **Analytics Dashboard**: Site statistics and user activity
+- 🛡️ **Admin Panel**: Promote users to admin or pro status
+- 🎨 **Owner Theme**: Exclusive colorful theme with special effects
+- ⚙️ **System Control**: Full access to all administrative functions
 
 ## Still Having Issues?
 
 If none of the above steps work:
 1. Try a different browser
-2. Disable browser extensions temporarily
+2. Disable browser extensions temporarily  
 3. Check if JavaScript is enabled
 4. Try accessing from a private/incognito window
+5. Verify network connection to Appwrite (https://syd.cloud.appwrite.io)
+6. Contact technical support with console error messages
 
-The admin login system is designed to work reliably across all modern browsers. If issues persist, they are likely related to browser-specific storage limitations or JavaScript blocking.
+The admin login system is now powered by Appwrite for enhanced security and reliability. All user data is stored securely in the cloud while maintaining the same user experience.
