@@ -1519,6 +1519,9 @@ function updateUserInterface() {
         loginBtn.style.display = 'flex';
         signupBtn.style.display = 'flex';
     }
+    
+    // Update sync status indicator
+    updateSyncStatusIndicator();
 }
 
 function showAuthModal(modalType) {
@@ -1716,6 +1719,8 @@ function handleLogin(event) {
     
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
+    
+    console.log('handleLogin called with:', { email, password: '***' });
     
     // Validation
     if (!email || !password) {
