@@ -1,17 +1,29 @@
 # Appwrite Setup Guide for Talkie Gen AI
 
-This application is now configured to use Appwrite cloud authentication exclusively (no localStorage fallback).
+This guide will help you set up Appwrite cloud sync for the Talkie Gen AI application.
 
-## Current Configuration
+## Prerequisites
 
-The application is pre-configured with:
-- **Project ID**: `68bb8b8b00136de837e5`
-- **Database ID**: `68bee8a90023e3b30eeb` (named "auth")
-- **Endpoint**: `https://cloud.appwrite.io/v1`
+1. An Appwrite Cloud account (https://cloud.appwrite.io)
+2. Admin access to your Appwrite project
 
-## Database Structure
+## Step 1: Create Appwrite Project
 
-The application expects the following collections in the "auth" database:
+1. Go to https://cloud.appwrite.io
+2. Create a new project or use an existing one
+3. Note your **Project ID** (you'll need this)
+
+## Step 2: Configure Project Settings
+
+### Update Project ID in Code
+
+In `script.js`, update the Appwrite configuration:
+
+```javascript
+// Appwrite Configuration
+const APPWRITE_PROJECT_ID = 'your-actual-project-id'; // Replace with your project ID
+const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
+```
 
 ### Add Platform (Web App)
 
@@ -19,12 +31,21 @@ The application expects the following collections in the "auth" database:
 2. Click **Add Platform** → **Web**
 3. Add your domain(s):
    - `https://yourdomain.com` (production)
-   - `https://coen-yin.github.io` (GitHub Pages)
    - `http://localhost:8001` (development)
+   - `https://coen-yin.github.io` (GitHub Pages)
 
-## Required Collections
+## Step 3: Create Database and Collections
 
-Create the following collections in the "auth" database (`68bee8a90023e3b30eeb`):
+### Create Database
+
+1. Go to **Databases** in your Appwrite console
+2. Click **Create Database**
+3. Name it: `main-database`
+4. Note the Database ID (should match `DATABASE_ID` in script.js)
+
+### Create Collections
+
+Create the following collections in your database:
 
 #### 1. Users Collection (`users`)
 
@@ -77,21 +98,7 @@ Create the following collections in the "auth" database (`68bee8a90023e3b30eeb`)
 - **Read**: `users`
 - **Update**: `users`
 
-## Important Notes
-
-### Cloud-Only Mode
-This application **requires** Appwrite cloud authentication and **does not** fall back to localStorage. Users must have:
-- Active internet connection
-- Access to Appwrite cloud services
-- Properly configured Appwrite project
-
-### No Local Storage Fallback
-Unlike previous versions, this application will show a "Service Unavailable" error if:
-- Appwrite SDK cannot be loaded
-- Project is not properly configured  
-- Network connectivity issues prevent cloud access
-
-## Troubleshooting
+## Step 4: Configure Authentication
 
 ### Enable Email/Password Auth
 

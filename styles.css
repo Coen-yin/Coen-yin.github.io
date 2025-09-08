@@ -3398,69 +3398,6 @@ input[type="checkbox"]:checked + .toggle-slider::before {
     display: block;
 }
 
-/* Fatal Error Modal */
-.fatal-error-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-}
-
-.fatal-error-modal {
-    background: var(--bg-primary);
-    padding: 2rem;
-    border-radius: 1rem;
-    max-width: 500px;
-    width: 90%;
-    text-align: center;
-    box-shadow: var(--shadow-xl);
-    border: 1px solid var(--border-light);
-}
-
-.error-icon {
-    font-size: 3rem;
-    color: var(--danger);
-    margin-bottom: 1rem;
-}
-
-.fatal-error-modal h2 {
-    color: var(--text-primary);
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.fatal-error-modal p {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 2rem;
-}
-
-.retry-btn {
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.retry-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
 /* Responsive sync status */
 @media (max-width: 768px) {
     .sync-status #syncText {
@@ -3473,10 +3410,5 @@ input[type="checkbox"]:checked + .toggle-slider::before {
     
     .sync-actions button {
         width: 100%;
-    }
-    
-    .fatal-error-modal {
-        margin: 1rem;
-        padding: 1.5rem;
     }
 }

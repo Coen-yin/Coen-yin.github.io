@@ -3,8 +3,13 @@ const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Appwrite Configuration
-const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5'; // Provided project ID
+// Update these values with your actual Appwrite project details
+const APPWRITE_PROJECT_ID = 'talkie-gen-ai-prod'; // Replace with your project ID
 const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1'; // Use global endpoint for better connectivity
+
+// Alternative regional endpoints (uncomment if needed):
+// const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1'; // Sydney
+// const APPWRITE_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1'; // New York
 
 // Appwrite instances
 let appwrite = null;
@@ -13,7 +18,7 @@ let databases = null;
 let isAppwriteReady = false;
 
 // Database and Collection IDs
-const DATABASE_ID = '68bee8a90023e3b30eeb'; // Provided database ID named "auth"
+const DATABASE_ID = 'main-database';
 const USERS_COLLECTION_ID = 'users';
 const USER_DATA_COLLECTION_ID = 'user_data';
 const CHATS_COLLECTION_ID = 'chats';
@@ -98,20 +103,20 @@ const removePhotoBtn = document.getElementById('removePhotoBtn');
 const currentPhoto = document.getElementById('currentPhoto');
 const photoPreview = document.getElementById('photoPreview');
 
-// State - No localStorage fallback, require Appwrite
+// State
 let currentChatId = null;
-let chats = {};
+let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
 let isGenerating = false;
-let currentUser = null;
+let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 
-// Cloud-only state management - no localStorage
-let isOnlineMode = true; // Always require cloud sync
-let lastSyncTime = null;
-let pendingSync = false;
+// Sync state management
+let isOnlineMode = false; // Whether cloud sync is active
+let lastSyncTime = localStorage.getItem('talkie-last-sync') || null;
+let pendingSync = false; // Whether we have unsaved changes to sync
 
-// Enhanced Context and Memory State - Cloud-only
-let userMemory = {};
-let conversationSettings = {
+// Enhanced Context and Memory State
+let userMemory = JSON.parse(localStorage.getItem('talkie-user-memory') || '{}');
+let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-settings') || JSON.stringify({
     contextLength: 10,
     responseStyle: 'balanced',
     enableMemory: true,
@@ -121,48 +126,44 @@ let conversationSettings = {
     enableWebSearch: true,
     searchBehavior: 'auto',
     showSearchResults: true
-};
-let conversationSummaries = {};
+}));
+let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation-summaries') || '{}');
 
-// Initialize App - Require Appwrite
+// Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initializing Talkie Gen AI with cloud-only mode...');
-    
-    // Initialize Appwrite - this is required, no fallback
-    const appwriteReady = await initializeAppwrite();
-    if (!appwriteReady) {
-        showFatalError('Cloud authentication service is required but not available. Please check your internet connection and try again.');
-        return;
-    }
-    
+    await initializeAppwrite(); // Initialize Appwrite first
     initializeTheme();
     initializeAuth();
-    initializeAdmin();
-    trackVisitor();
-    checkProUpgrade();
-    initializeMemorySystem();
-    handleDocumentationRouting();
+    initializeAdmin(); // Initialize admin system
+    initializeGoogleAuth(); // Initialize Google OAuth
+    trackVisitor(); // Track visitor statistics
+    checkProUpgrade(); // Check for pro upgrade URL
+    initializeMemorySystem(); // Initialize enhanced memory system
+    handleDocumentationRouting(); // Handle docs URL routing
     setupEventListeners();
     loadChatHistory();
     autoResizeTextarea();
     
-    // Load user data from cloud
-    if (currentUser && isAppwriteReady) {
-        await syncUserDataFromCloud();
-    }
+    // Wait for Appwrite before syncing
+    setTimeout(() => {
+        if (currentUser && isAppwriteReady) {
+            syncUserDataFromCloud();
+        }
+    }, 2000);
 });
 
-// Appwrite initialization - Required for operation
+// Appwrite initialization
 async function initializeAppwrite() {
-    console.log('🔄 Initializing Appwrite (required)...');
+    console.log('🔄 Initializing Appwrite...');
     console.log('📍 Project ID:', APPWRITE_PROJECT_ID);
     console.log('🌐 Endpoint:', APPWRITE_ENDPOINT);
-    console.log('🗄️ Database ID:', DATABASE_ID);
     
     // Check if Appwrite is loaded
     if (typeof Appwrite === 'undefined') {
-        console.error('❌ Appwrite SDK not loaded - application cannot function');
-        return false;
+        console.log('❌ Appwrite SDK not loaded - using localStorage mode');
+        console.log('💡 This can happen when CDN is blocked or in offline mode');
+        showAuthModeStatus('localStorage', 'Appwrite SDK not available');
+        return;
     }
     
     try {
@@ -178,46 +179,35 @@ async function initializeAppwrite() {
         
         console.log('✅ Appwrite client created successfully');
         
-        // Test connection
-        await testAppwriteConnection();
-        isAppwriteReady = true;
-        isOnlineMode = true;
-        console.log('🌟 Appwrite connection successful - cloud mode enabled');
-        showAuthModeStatus('cloud');
-        
-        // Check if user is already logged in
-        await checkCurrentSession();
-        return true;
+        // Test connection by trying to get project details
+        try {
+            await testAppwriteConnection();
+            isAppwriteReady = true;
+            isOnlineMode = true;
+            console.log('🌟 Appwrite connection successful - cloud sync enabled');
+            showAuthModeStatus('cloud');
+            
+            // Check if user is already logged in
+            checkCurrentSession();
+        } catch (connectionError) {
+            console.error('❌ Appwrite connection test failed:', connectionError);
+            console.log('💡 Possible causes:');
+            console.log('   - Project does not exist');
+            console.log('   - Platform domain not configured in Appwrite');
+            console.log('   - Network connectivity issues');
+            console.log('   - Incorrect project ID or endpoint');
+            
+            isAppwriteReady = false;
+            isOnlineMode = false;
+            showAuthModeStatus('localStorage', 'Appwrite connection test failed');
+        }
         
     } catch (error) {
         console.error('❌ Appwrite initialization failed:', error);
         isAppwriteReady = false;
         isOnlineMode = false;
-        return false;
+        showAuthModeStatus('localStorage', 'Appwrite initialization failed');
     }
-}
-
-// Show fatal error when cloud services are unavailable
-function showFatalError(message) {
-    const errorHtml = `
-        <div class="fatal-error-overlay">
-            <div class="fatal-error-modal">
-                <div class="error-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <h2>Service Unavailable</h2>
-                <p>${message}</p>
-                <div class="error-actions">
-                    <button onclick="window.location.reload()" class="retry-btn">
-                        <i class="fas fa-redo"></i>
-                        Retry
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', errorHtml);
 }
 
 // Test Appwrite connection
@@ -263,12 +253,9 @@ function showAuthModeStatus(mode, errorDetails = null) {
     }
 }
 
-// Check current session - no localStorage fallback
+// Check current session
 async function checkCurrentSession() {
-    if (!isAppwriteReady) {
-        showFatalError('Authentication service not available.');
-        return;
-    }
+    if (!isAppwriteReady) return;
     
     try {
         const session = await account.get();
@@ -278,13 +265,14 @@ async function checkCurrentSession() {
         }
     } catch (error) {
         console.log('No active session found');
-        // Clear any stored user data since session is invalid
+        // Clear any local user data if session is invalid
         currentUser = null;
+        localStorage.removeItem('talkie-user');
         updateUserInterface();
     }
 }
 
-// Load user data from Appwrite - no localStorage fallback
+// Load user data from Appwrite
 async function loadUserFromAppwrite(session) {
     try {
         // Get user document from database
@@ -310,15 +298,17 @@ async function loadUserFromAppwrite(session) {
             }
         };
         
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
         updateUserInterface();
         initializeTheme();
         
-        // Load user's data from cloud
+        // Load user's data
         await syncUserDataFromCloud();
         
     } catch (error) {
         console.error('Error loading user from Appwrite:', error);
         
+        // Handle different error scenarios
         if (error.code === 404) {
             console.log('User document not found, creating new one');
             await createUserDocument(session);
@@ -327,8 +317,30 @@ async function loadUserFromAppwrite(session) {
             showToast('Authentication error. Please sign in again.', 'error');
             await handleLogout();
         } else {
-            console.log('Database error - unable to load user data');
-            showFatalError('Unable to load user data from cloud database. Please check your connection and try again.');
+            console.log('Database error, falling back to localStorage');
+            showToast('Cloud sync temporarily unavailable. Using local storage.', 'warning');
+            isAppwriteReady = false;
+            
+            // Create local user as fallback
+            currentUser = {
+                id: session.$id,
+                name: session.name,
+                email: session.email,
+                isPro: false,
+                isAdmin: false,
+                isOwner: session.email === 'coenyin9@gmail.com',
+                profilePhoto: null,
+                restrictions: {
+                    maxChatsPerDay: 50,
+                    maxMessagesPerChat: 100,
+                    canExportData: true,
+                    canUploadImages: true
+                }
+            };
+            
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
+            initializeTheme();
         }
     }
 }
@@ -389,7 +401,7 @@ async function createUserDocument(session) {
     }
 }
 
-// Sync user data to cloud (Appwrite) - primary storage
+// Sync user data to cloud (Appwrite)
 async function syncUserDataToCloud() {
     if (!isAppwriteReady || !currentUser) return false;
     
@@ -434,6 +446,7 @@ async function syncUserDataToCloud() {
             }
         }
         
+        localStorage.setItem('talkie-last-sync', timestamp.toString());
         lastSyncTime = timestamp.toString();
         pendingSync = false;
         
@@ -446,8 +459,9 @@ async function syncUserDataToCloud() {
         
         // Handle different types of errors
         if (error.code === 404) {
-            console.log('Database or collection missing');
-            showFatalError('Cloud database not properly configured. Please contact administrator.');
+            console.log('Database or collection missing, disabling cloud sync');
+            isAppwriteReady = false;
+            showToast('Cloud database not found. Contact administrator to set up cloud sync.', 'warning');
         } else if (error.code === 401) {
             console.log('Authentication expired, user needs to re-login');
             showToast('Session expired. Please sign in again.', 'warning');
@@ -504,32 +518,37 @@ async function syncUserDataFromCloud() {
     }
 }
 
-// Handle incoming cloud data updates - no localStorage
+// Handle incoming cloud data updates
 async function handleCloudDataUpdate(cloudData) {
     try {
         // Update chats
         if (cloudData.chats) {
             chats = cloudData.chats;
+            localStorage.setItem('talkie-chats', JSON.stringify(chats));
             updateChatHistory();
         }
         
         // Update user memory
         if (cloudData.memory && currentUser) {
             userMemory[currentUser.email] = cloudData.memory;
+            localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
         }
         
         // Update settings
         if (cloudData.settings) {
             conversationSettings = cloudData.settings;
+            localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
         }
         
         // Update summaries
         if (cloudData.summaries) {
             conversationSummaries = cloudData.summaries;
+            localStorage.setItem('talkie-conversation-summaries', JSON.stringify(conversationSummaries));
         }
         
         // Update last sync time
         if (cloudData.lastUpdated) {
+            localStorage.setItem('talkie-last-sync', cloudData.lastUpdated.toString());
             lastSyncTime = cloudData.lastUpdated.toString();
         }
         
@@ -540,9 +559,11 @@ async function handleCloudDataUpdate(cloudData) {
     }
 }
 
-// Cloud-only save functions
+// Enhanced save functions that trigger cloud sync
 function saveChats() {
-    // Data only saved to cloud, no localStorage
+    localStorage.setItem('talkie-chats', JSON.stringify(chats));
+    
+    // Trigger cloud sync if user is logged in
     if (currentUser && isAppwriteReady) {
         debouncedCloudSync();
     }
@@ -550,7 +571,9 @@ function saveChats() {
 
 function saveUserMemory() {
     try {
-        // Data only saved to cloud, no localStorage
+        localStorage.setItem('talkie-user-memory', JSON.stringify(userMemory));
+        
+        // Trigger cloud sync if user is logged in
         if (currentUser && isAppwriteReady) {
             debouncedCloudSync();
         }
@@ -561,7 +584,9 @@ function saveUserMemory() {
 
 function saveConversationSettings() {
     try {
-        // Data only saved to cloud, no localStorage
+        localStorage.setItem('talkie-conversation-settings', JSON.stringify(conversationSettings));
+        
+        // Trigger cloud sync if user is logged in
         if (currentUser && isAppwriteReady) {
             debouncedCloudSync();
         }
@@ -723,7 +748,7 @@ function handleGoogleSignIn(response) {
     }
 }
 
-// Initialize admin system - Cloud-only
+// Initialize admin system
 async function initializeAdmin() {
     try {
         const adminEmail = 'coenyin9@gmail.com';
@@ -732,11 +757,13 @@ async function initializeAdmin() {
             // Ensure admin account exists in Appwrite
             await ensureAdminAccountInAppwrite(adminEmail);
         } else {
-            console.error('Cannot initialize admin - Appwrite not ready');
-            showFatalError('Admin system requires cloud authentication.');
+            // Fallback to localStorage
+            createLocalAdminAccount(adminEmail);
         }
     } catch (error) {
         console.error('Error initializing admin account:', error);
+        // Force create owner account as fallback
+        createLocalAdminAccount('coenyin9@gmail.com');
     }
 }
 
