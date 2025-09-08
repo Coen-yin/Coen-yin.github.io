@@ -3,8 +3,13 @@ const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Appwrite Configuration
-const APPWRITE_PROJECT_ID = 'talkie-gen-ai-prod';
-const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
+// Update these values with your actual Appwrite project details
+const APPWRITE_PROJECT_ID = 'talkie-gen-ai-prod'; // Replace with your project ID
+const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1'; // Use global endpoint for better connectivity
+
+// Alternative regional endpoints (uncomment if needed):
+// const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1'; // Sydney
+// const APPWRITE_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1'; // New York
 
 // Appwrite instances
 let appwrite = null;
@@ -125,8 +130,8 @@ let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-
 let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation-summaries') || '{}');
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
-    initializeAppwrite(); // Initialize Appwrite first
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeAppwrite(); // Initialize Appwrite first
     initializeTheme();
     initializeAuth();
     initializeAdmin(); // Initialize admin system
@@ -148,11 +153,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Appwrite initialization
-function initializeAppwrite() {
+async function initializeAppwrite() {
+    console.log('🔄 Initializing Appwrite...');
+    console.log('📍 Project ID:', APPWRITE_PROJECT_ID);
+    console.log('🌐 Endpoint:', APPWRITE_ENDPOINT);
+    
     // Check if Appwrite is loaded
     if (typeof Appwrite === 'undefined') {
-        console.log('Appwrite SDK not loaded - using localStorage mode');
-        showAuthModeStatus('localStorage');
+        console.log('❌ Appwrite SDK not loaded - using localStorage mode');
+        console.log('💡 This can happen when CDN is blocked or in offline mode');
+        showAuthModeStatus('localStorage', 'Appwrite SDK not available');
         return;
     }
     
@@ -167,20 +177,55 @@ function initializeAppwrite() {
         account = new Appwrite.Account(appwrite);
         databases = new Appwrite.Databases(appwrite);
         
-        isAppwriteReady = true;
-        isOnlineMode = true;
+        console.log('✅ Appwrite client created successfully');
         
-        console.log('Appwrite initialized successfully');
-        showAuthModeStatus('cloud');
-        
-        // Check if user is already logged in
-        checkCurrentSession();
+        // Test connection by trying to get project details
+        try {
+            await testAppwriteConnection();
+            isAppwriteReady = true;
+            isOnlineMode = true;
+            console.log('🌟 Appwrite connection successful - cloud sync enabled');
+            showAuthModeStatus('cloud');
+            
+            // Check if user is already logged in
+            checkCurrentSession();
+        } catch (connectionError) {
+            console.error('❌ Appwrite connection test failed:', connectionError);
+            console.log('💡 Possible causes:');
+            console.log('   - Project does not exist');
+            console.log('   - Platform domain not configured in Appwrite');
+            console.log('   - Network connectivity issues');
+            console.log('   - Incorrect project ID or endpoint');
+            
+            isAppwriteReady = false;
+            isOnlineMode = false;
+            showAuthModeStatus('localStorage', 'Appwrite connection test failed');
+        }
         
     } catch (error) {
-        console.error('Appwrite initialization failed:', error);
+        console.error('❌ Appwrite initialization failed:', error);
         isAppwriteReady = false;
         isOnlineMode = false;
-        showAuthModeStatus('localStorage', 'Appwrite connection failed');
+        showAuthModeStatus('localStorage', 'Appwrite initialization failed');
+    }
+}
+
+// Test Appwrite connection
+async function testAppwriteConnection() {
+    if (!account) throw new Error('Account service not initialized');
+    
+    try {
+        // Try to get current session (will fail gracefully if not logged in)
+        await account.get();
+        console.log('✅ Appwrite session check successful');
+    } catch (error) {
+        // If error is "missing scope" or similar auth error, connection is working
+        if (error.code === 401 || error.code === 'unauthorized') {
+            console.log('✅ Appwrite connection verified (no active session)');
+            return;
+        }
+        // If it's a different error, connection might be broken
+        throw error;
     }
 }
 
