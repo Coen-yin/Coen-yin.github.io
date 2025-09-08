@@ -1,5 +1,5 @@
 // API Configuration - Updated with working API key
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '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';
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Firebase Configuration for cross-device data sync
