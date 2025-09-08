@@ -1710,7 +1710,6 @@ function createAccountLocally(name, email, password) {
     // Initialize memory system for this user
     initializeMemorySystem();
 }
-}
 
 function handleLogin(event) {
     event.preventDefault();
