@@ -1,0 +1,22 @@
+{
+  "name": "talkie-gen-ai",
+  "version": "1.0.0",
+  "description": "AI Assistant with Appwrite integration",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8001",
+    "build": "echo 'No build process needed for static site'",
+    "test": "echo 'Testing would require browser automation'"
+  },
+  "dependencies": {
+    "appwrite": "^13.0.2"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "appwrite",
+    "chat"
+  ],
+  "author": "Coen Yin",
+  "license": "MIT"
+}
