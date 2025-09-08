@@ -151,7 +151,6 @@ function initializeAppwrite() {
     // Check if Appwrite is loaded
     if (typeof Appwrite === 'undefined') {
         console.log('Appwrite SDK not loaded, using localStorage only');
-        showToast('Running in offline mode - data will not sync across devices', 'info');
         return;
     }
     
@@ -169,15 +168,13 @@ function initializeAppwrite() {
         isAppwriteReady = true;
         isOnlineMode = true;
         
-        console.log('Appwrite initialized successfully');
-        showToast('Cloud sync enabled - your data will sync across devices!', 'success');
+        console.log('Appwrite initialized successfully - Cloud sync enabled');
         
         // Check if user is already logged in
         checkCurrentSession();
         
     } catch (error) {
         console.error('Appwrite initialization failed:', error);
-        showToast('Cloud sync unavailable - using local storage only', 'warning');
         isAppwriteReady = false;
         isOnlineMode = false;
     }
@@ -736,22 +733,70 @@ function createLocalAdminAccount(adminEmail) {
                 isPro: true,
                 isAdmin: true,
                 isOwner: true, // Owner role
-                profilePhoto: null
+                profilePhoto: null,
+                restrictions: {
+                    maxChatsPerDay: 1000,
+                    maxMessagesPerChat: 1000,
+                    canExportData: true,
+                    canUploadImages: true,
+                    canAccessAdvancedSettings: true,
+                    canUseVoiceInput: true
+                }
             };
             localStorage.setItem('talkie-users', JSON.stringify(users));
             console.log('Owner account created successfully');
         } else {
             // Ensure existing admin account has all required properties
+            let updated = false;
             if (!users[adminEmail].isOwner) {
                 users[adminEmail].isOwner = true;
+                updated = true;
+            }
+            if (!users[adminEmail].isAdmin) {
                 users[adminEmail].isAdmin = true;
+                updated = true;
+            }
+            if (!users[adminEmail].isPro) {
                 users[adminEmail].isPro = true;
+                updated = true;
+            }
+            if (!users[adminEmail].restrictions) {
+                users[adminEmail].restrictions = {
+                    maxChatsPerDay: 1000,
+                    maxMessagesPerChat: 1000,
+                    canExportData: true,
+                    canUploadImages: true,
+                    canAccessAdvancedSettings: true,
+                    canUseVoiceInput: true
+                };
+                updated = true;
+            }
+            if (updated) {
                 localStorage.setItem('talkie-users', JSON.stringify(users));
                 console.log('Owner account permissions updated');
             }
         }
     } catch (error) {
         console.error('Failed to create local admin account:', error);
+        // Force a basic account creation
+        try {
+            const basicAccount = {};
+            const hashedPassword = hashPassword('Carronshore93');
+            basicAccount[adminEmail] = {
+                name: 'Coen Yin',
+                email: adminEmail,
+                password: hashedPassword,
+                createdAt: new Date().toISOString(),
+                isPro: true,
+                isAdmin: true,
+                isOwner: true,
+                profilePhoto: null
+            };
+            localStorage.setItem('talkie-users', JSON.stringify(basicAccount));
+            console.log('Basic owner account created as fallback');
+        } catch (fallbackError) {
+            console.error('Failed to create fallback owner account:', fallbackError);
+        }
     }
 }
 
@@ -1168,10 +1213,10 @@ function setupSettingsEventListeners() {
     const viewMemoryBtn = document.getElementById('viewMemoryBtn');
     const clearMemoryBtn = document.getElementById('clearMemoryBtn');
     
-    saveBtn.addEventListener('click', saveSettings);
-    resetBtn.addEventListener('click', resetSettings);
-    viewMemoryBtn.addEventListener('click', showMemoryViewer);
-    clearMemoryBtn.addEventListener('click', clearUserMemory);
+    if (saveBtn) saveBtn.addEventListener('click', saveSettings);
+    if (resetBtn) resetBtn.addEventListener('click', resetSettings);
+    if (viewMemoryBtn) viewMemoryBtn.addEventListener('click', showMemoryViewer);
+    if (clearMemoryBtn) clearMemoryBtn.addEventListener('click', clearUserMemory);
     
     // Close modal on overlay click
     settingsModalOverlay.addEventListener('click', (e) => {
@@ -1824,7 +1869,16 @@ function loginLocally(email, password) {
     try {
         // Check credentials
         const existingUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const user = existingUsers[email];
+        let user = existingUsers[email];
+        
+        // Special handling for owner account - ensure it exists
+        if (!user && email === 'coenyin9@gmail.com') {
+            console.log('Owner account not found, creating it now...');
+            createLocalAdminAccount('coenyin9@gmail.com');
+            // Reload users after creating admin account
+            const updatedUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+            user = updatedUsers[email];
+        }
         
         if (!user) {
             showToast('No account found with this email. Please check your email address or create a new account.', 'error');
@@ -1997,13 +2051,14 @@ function setupEventListeners() {
         syncStatusBtn.addEventListener('click', toggleSyncStatus);
     }
     
-    if (forceSyncBtn) {
-        forceSyncBtn.addEventListener('click', forceSync);
-    }
+    // Sync buttons removed from UI
+    // if (forceSyncBtn) {
+    //     forceSyncBtn.addEventListener('click', forceSync);
+    // }
     
-    if (clearLocalDataBtn) {
-        clearLocalDataBtn.addEventListener('click', clearLocalData);
-    }
+    // if (clearLocalDataBtn) {
+    //     clearLocalDataBtn.addEventListener('click', clearLocalData);
+    // }
     
     // Restrictions management event listeners
     const editRestrictionsBtn = document.getElementById('editRestrictionsBtn');
@@ -4604,53 +4659,20 @@ function importData(event) {
     event.target.value = '';
 }
 
-// Sync Status Management
+// Sync Status Management (simplified - UI elements removed)
 function updateSyncStatusIndicator() {
-    const syncIcon = document.getElementById('syncIcon');
-    const syncText = document.getElementById('syncText');
-    const syncStatus = document.getElementById('syncStatus');
-    
-    if (!syncIcon || !syncText || !syncStatus) return;
-    
+    // Sync status UI has been removed to simplify interface
+    // Data still syncs automatically in the background
+    return;
+}
+
+function toggleSyncStatus() {
+    // Sync status UI removed - data syncs automatically
     if (!currentUser) {
-        syncIcon.className = 'fas fa-user-slash';
-        syncText.textContent = 'Guest';
-        syncStatus.className = 'sync-status offline';
-        syncStatus.title = 'Guest mode - Sign in to enable cloud sync';
         return;
     }
     
     if (!isAppwriteReady) {
-        syncIcon.className = 'fas fa-wifi-slash';
-        syncText.textContent = 'Offline';
-        syncStatus.className = 'sync-status offline';
-        syncStatus.title = 'Cloud sync unavailable - Data stored locally only';
-        return;
-    }
-    
-    if (pendingSync) {
-        syncIcon.className = 'fas fa-sync';
-        syncText.textContent = 'Syncing';
-        syncStatus.className = 'sync-status syncing';
-        syncStatus.title = 'Syncing data to cloud...';
-        return;
-    }
-    
-    syncIcon.className = 'fas fa-cloud-upload-alt';
-    syncText.textContent = 'Synced';
-    syncStatus.className = 'sync-status online';
-    const lastSyncDate = lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleTimeString() : 'Never';
-    syncStatus.title = `Last synced: ${lastSyncDate}`;
-}
-
-function toggleSyncStatus() {
-    if (!currentUser) {
-        showToast('Please sign in to use cloud sync', 'info');
-        return;
-    }
-    
-    if (!isFirebaseReady) {
-        showToast('Cloud sync is currently unavailable', 'warning');
         return;
     }
     
@@ -4659,30 +4681,23 @@ function toggleSyncStatus() {
 
 async function forceSync() {
     if (!currentUser) {
-        showToast('Please sign in to sync data', 'info');
         return;
     }
     
     if (!isAppwriteReady) {
-        showToast('Cloud sync is currently unavailable', 'warning');
         return;
     }
-    
-    updateSyncStatusIndicator();
     
     try {
         const success = await syncUserDataToCloud();
         if (success) {
-            showToast('Data synced to cloud successfully!', 'success');
+            console.log('Data synced to cloud successfully');
         } else {
-            showToast('Failed to sync data to cloud', 'error');
+            console.log('Failed to sync data to cloud');
         }
     } catch (error) {
         console.error('Force sync error:', error);
-        showToast('Failed to sync data to cloud', 'error');
     }
-    
-    updateSyncStatusIndicator();
 }
 
 function clearLocalData() {
@@ -4938,7 +4953,7 @@ function displayUserDetails(user) {
     document.getElementById('userDetails').style.display = 'block';
 }
 
-// Enhanced settings modal with sync info
+// Enhanced settings modal (simplified without sync UI)
 function showSettingsModal() {
     settingsModalOverlay.classList.add('active');
     settingsModal.classList.add('active');
@@ -4955,9 +4970,6 @@ function showSettingsModal() {
     document.getElementById('searchBehavior').value = conversationSettings.searchBehavior || 'auto';
     document.getElementById('showSearchResults').checked = conversationSettings.showSearchResults !== false;
     
-    // Update sync info
-    updateSyncInfo();
-    
     // Update memory info
     updateMemoryInfo();
     
@@ -4966,34 +4978,6 @@ function showSettingsModal() {
 }
 
 function updateSyncInfo() {
-    const syncStatusText = document.getElementById('syncStatusText');
-    const lastSyncText = document.getElementById('lastSyncText');
-    
-    if (!syncStatusText || !lastSyncText) return;
-    
-    if (!currentUser) {
-        syncStatusText.textContent = 'Not signed in';
-        lastSyncText.textContent = 'Sign in required';
-        return;
-    }
-    
-    if (!isAppwriteReady) {
-        syncStatusText.textContent = 'Offline (Local storage only)';
-        lastSyncText.textContent = 'Cloud sync unavailable';
-        return;
-    }
-    
-    if (pendingSync) {
-        syncStatusText.textContent = 'Syncing...';
-        lastSyncText.textContent = 'In progress';
-        return;
-    }
-    
-    syncStatusText.textContent = 'Online (Cloud sync active)';
-    if (lastSyncTime) {
-        const lastSyncDate = new Date(parseInt(lastSyncTime));
-        lastSyncText.textContent = lastSyncDate.toLocaleString();
-    } else {
-        lastSyncText.textContent = 'Never';
-    }
+    // Sync info UI section has been removed
+    return;
 }
