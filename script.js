@@ -238,9 +238,39 @@ async function loadUserFromAppwrite(session) {
     } catch (error) {
         console.error('Error loading user from Appwrite:', error);
         
-        // If user document doesn't exist, create it
+        // Handle different error scenarios
         if (error.code === 404) {
+            console.log('User document not found, creating new one');
             await createUserDocument(session);
+        } else if (error.code === 401) {
+            console.log('Authentication error, session may be invalid');
+            showToast('Authentication error. Please sign in again.', 'error');
+            await handleLogout();
+        } else {
+            console.log('Database error, falling back to localStorage');
+            showToast('Cloud sync temporarily unavailable. Using local storage.', 'warning');
+            isAppwriteReady = false;
+            
+            // Create local user as fallback
+            currentUser = {
+                id: session.$id,
+                name: session.name,
+                email: session.email,
+                isPro: false,
+                isAdmin: false,
+                isOwner: session.email === 'coenyin9@gmail.com',
+                profilePhoto: null,
+                restrictions: {
+                    maxChatsPerDay: 50,
+                    maxMessagesPerChat: 100,
+                    canExportData: true,
+                    canUploadImages: true
+                }
+            };
+            
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            updateUserInterface();
+            initializeTheme();
         }
     }
 }
@@ -282,9 +312,21 @@ async function createUserDocument(session) {
     } catch (error) {
         console.error('Error creating user document:', error);
         
-        // If database doesn't exist, we'll handle it gracefully
+        // Handle different error types more gracefully
         if (error.code === 404) {
-            showToast('Database setup required. Please contact administrator.', 'warning');
+            console.log('Database or collection does not exist. Falling back to localStorage.');
+            showToast('Cloud sync setup required. Using local storage for now.', 'info');
+            // Fall back to localStorage mode
+            isAppwriteReady = false;
+            createAccountLocally(session.name, session.email, 'appwrite-user');
+        } else if (error.code === 401) {
+            console.log('Authentication error with Appwrite.');
+            showToast('Authentication error. Please try logging in again.', 'error');
+        } else {
+            console.log('Unexpected error with Appwrite, falling back to localStorage.');
+            showToast('Cloud sync temporarily unavailable. Using local storage.', 'warning');
+            isAppwriteReady = false;
+            createAccountLocally(session.name, session.email, 'appwrite-user');
         }
     }
 }
@@ -344,7 +386,19 @@ async function syncUserDataToCloud() {
     } catch (error) {
         console.error('Failed to sync data to cloud:', error);
         pendingSync = false;
-        showToast('Failed to sync data to cloud', 'error');
+        
+        // Handle different types of errors
+        if (error.code === 404) {
+            console.log('Database or collection missing, disabling cloud sync');
+            isAppwriteReady = false;
+            showToast('Cloud database not found. Contact administrator to set up cloud sync.', 'warning');
+        } else if (error.code === 401) {
+            console.log('Authentication expired, user needs to re-login');
+            showToast('Session expired. Please sign in again.', 'warning');
+            handleLogout();
+        } else {
+            showToast('Failed to sync data to cloud', 'error');
+        }
         return false;
     }
 }
@@ -1519,6 +1573,9 @@ function updateUserInterface() {
         loginBtn.style.display = 'flex';
         signupBtn.style.display = 'flex';
     }
+    
+    // Update sync status indicator
+    updateSyncStatusIndicator();
 }
 
 function showAuthModal(modalType) {
@@ -1716,6 +1773,8 @@ function handleLogin(event) {
     
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
+    
+    console.log('handleLogin called with:', { email, password: '***' });
     
     // Validation
     if (!email || !password) {
