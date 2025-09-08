@@ -4,7 +4,7 @@ const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Appwrite Configuration
 const APPWRITE_PROJECT_ID = 'talkie-gen-ai-prod';
-const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
+const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 
 // Appwrite instances
 let appwrite = null;
