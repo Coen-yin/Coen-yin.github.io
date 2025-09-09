@@ -1978,7 +1978,7 @@ CURRENT CONTEXT:
     try {
         // Check if Puter is available
         if (!puter) {
-            throw new Error('Puter API not initialized. Please refresh the page.');
+            throw new Error('Puter API not initialized. The AI service requires the Puter SDK to be loaded from https://cdn.puter.com/puter.js');
         }
 
         // Create the user message for Puter (it expects a simple string)
@@ -1997,7 +1997,7 @@ CURRENT CONTEXT:
         console.error('Puter API Error:', error);
         
         if (error.message.includes('API not initialized')) {
-            throw new Error('AI service not available. Please refresh the page.');
+            throw new Error('AI service not available. The Puter SDK could not be loaded. Please check your internet connection and refresh the page.');
         } else if (error.message.includes('rate limit')) {
             throw new Error('Rate limit exceeded. Please wait a moment');
         } else if (error.message.includes('server')) {
