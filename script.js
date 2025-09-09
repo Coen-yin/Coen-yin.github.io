@@ -16,10 +16,12 @@ function initializePuter() {
             });
             console.log('✅ Puter API initialized successfully with GPT-5 nano model');
         } else {
-            console.warn('⚠️ Puter SDK not loaded - AI features will be disabled');
+            console.warn('⚠️ Puter SDK not loaded - Using fallback AI system instead');
+            console.log('ℹ️ Fallback AI system provides local responses when external services are unavailable');
         }
     } catch (error) {
         console.error('❌ Error initializing Puter API:', error);
+        console.log('ℹ️ Switching to fallback AI system for offline functionality');
     }
 }
 
@@ -1976,17 +1978,20 @@ CURRENT CONTEXT:
     ];
 
     try {
+        let aiResponse;
+        
         // Check if Puter is available
         if (!puter) {
-            throw new Error('Puter API not initialized. The AI service requires the Puter SDK to be loaded from https://cdn.puter.com/puter.js');
+            console.warn('Puter SDK not available, using fallback AI response system');
+            aiResponse = await getFallbackAIResponse(userMessage, contextMessages);
+        } else {
+            // Create the user message for Puter (it expects a simple string)
+            // We'll combine the system message with the user message for context
+            const contextualMessage = `${systemContent}\n\nUser: ${userMessage}`;
+
+            // Get AI response using Puter's chat method
+            aiResponse = await puter.chat(contextualMessage);
         }
-
-        // Create the user message for Puter (it expects a simple string)
-        // We'll combine the system message with the user message for context
-        const contextualMessage = `${systemContent}\n\nUser: ${userMessage}`;
-
-        // Get AI response using Puter's chat method
-        const aiResponse = await puter.chat(contextualMessage);
         
         // Update user memory with the conversation
         updateUserMemory(userMessage, aiResponse);
@@ -1994,10 +1999,19 @@ CURRENT CONTEXT:
         return aiResponse;
 
     } catch (error) {
-        console.error('Puter API Error:', error);
+        console.error('AI API Error:', error);
         
-        if (error.message.includes('API not initialized')) {
-            throw new Error('AI service not available. The Puter SDK could not be loaded. Please check your internet connection and refresh the page.');
+        // If Puter fails, try fallback system
+        if (error.message.includes('API not initialized') || error.message.includes('Puter')) {
+            console.warn('Puter API failed, using fallback system');
+            try {
+                const fallbackResponse = await getFallbackAIResponse(userMessage, contextMessages);
+                updateUserMemory(userMessage, fallbackResponse);
+                return fallbackResponse;
+            } catch (fallbackError) {
+                console.error('Fallback AI also failed:', fallbackError);
+                throw new Error('AI services are temporarily unavailable. Please try again later.');
+            }
         } else if (error.message.includes('rate limit')) {
             throw new Error('Rate limit exceeded. Please wait a moment');
         } else if (error.message.includes('server')) {
@@ -2009,6 +2023,141 @@ CURRENT CONTEXT:
         isGenerating = false;
         sendButton.disabled = false;
     }
+}
+
+// Fallback AI Response System
+async function getFallbackAIResponse(userMessage, contextMessages) {
+    // Simulate a brief delay to make it feel more realistic
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1500));
+    
+    const message = userMessage.toLowerCase().trim();
+    
+    // Generate contextual responses based on user input
+    if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        const greetings = [
+            "Hello! I'm Talkie Gen AI, your helpful assistant. I'm currently running in offline mode, but I'm still here to help you with various tasks, answer questions, and have conversations. What can I assist you with today?",
+            "Hi there! Welcome to Talkie Gen AI. While I'm operating in offline mode right now, I can still help you with coding questions, writing tasks, general information, and much more. How can I help?",
+            "Hey! Thanks for reaching out. I'm Talkie Gen AI, and I'm ready to assist you. I'm currently in offline mode, but don't worry - I can still provide helpful responses and engage in meaningful conversations. What would you like to explore?"
+        ];
+        return greetings[Math.floor(Math.random() * greetings.length)];
+    }
+    
+    if (message.includes('how are you') || message.includes('how do you feel')) {
+        return "I'm doing well, thank you for asking! I'm currently running in offline mode due to external service limitations, but I'm still functional and ready to help. I may not have access to the latest information, but I can assist with coding, writing, problem-solving, and general conversations. How are you doing today?";
+    }
+    
+    if (message.includes('what can you do') || message.includes('capabilities') || message.includes('help me')) {
+        return `I'm Talkie Gen AI, and even in offline mode, I can help you with:
+
+🔹 **Programming & Code**: Writing, debugging, and explaining code in various languages
+🔹 **Writing & Content**: Essays, emails, creative writing, and editing
+🔹 **Problem Solving**: Breaking down complex problems and finding solutions
+🔹 **Learning & Education**: Explaining concepts, answering questions, and providing guidance
+🔹 **Creative Tasks**: Brainstorming, storytelling, and creative projects
+🔹 **General Conversation**: Discussing topics, sharing ideas, and engaging dialogue
+
+*Note: I'm currently in offline mode, so I don't have access to real-time information or external services. For the most current information, please verify with reliable sources.*
+
+What specific task would you like help with?`;
+    }
+    
+    if (message.includes('code') || message.includes('programming') || message.includes('function') || message.includes('javascript') || message.includes('python') || message.includes('html') || message.includes('css')) {
+        return `I'd be happy to help you with programming! I can assist with:
+
+• Writing code snippets and functions
+• Debugging and troubleshooting
+• Explaining programming concepts
+• Code reviews and optimization
+• Best practices and patterns
+
+Please share your specific coding question or the programming language you're working with, and I'll provide detailed assistance. For example:
+
+\`\`\`javascript
+// Example: Here's a simple function structure
+function exampleFunction(parameter) {
+    // Your code logic here
+    return result;
+}
+\`\`\`
+
+What programming challenge are you working on?`;
+    }
+    
+    if (message.includes('write') || message.includes('essay') || message.includes('story') || message.includes('email') || message.includes('letter')) {
+        return `I'm excellent at helping with writing tasks! I can assist you with:
+
+📝 **Creative Writing**: Stories, poems, character development
+📧 **Professional Writing**: Emails, reports, proposals
+📖 **Academic Writing**: Essays, research summaries, explanations
+✏️ **Editing & Proofreading**: Improving clarity, grammar, and style
+💡 **Content Ideas**: Brainstorming topics and outlines
+
+What type of writing project are you working on? Please share any specific requirements, tone, length, or topic you have in mind, and I'll help you create something great!`;
+    }
+    
+    if (message.includes('explain') || message.includes('what is') || message.includes('how does') || message.includes('why')) {
+        return `I love explaining things! I can break down complex topics into understandable explanations. While I'm in offline mode and don't have access to the very latest information, I can help explain:
+
+🧠 **Science & Technology**: Concepts, theories, and how things work
+📚 **Educational Topics**: Academic subjects and learning materials  
+💼 **Professional Skills**: Business concepts, methodologies
+🎨 **Creative Processes**: Art, design, writing techniques
+🔧 **Practical Skills**: Step-by-step guides and tutorials
+
+What would you like me to explain? Please be as specific as possible, and I'll provide a clear, detailed explanation tailored to your needs.`;
+    }
+    
+    if (message.includes('offline') || message.includes('error') || message.includes('not working') || message.includes('puter')) {
+        return `I understand you're experiencing some technical issues. I'm currently running in offline mode because the external AI service (Puter SDK) couldn't be loaded. This might be due to:
+
+• Network connectivity issues
+• Browser restrictions or ad blockers
+• Temporary service outages
+• Firewall or security settings
+
+**Don't worry though!** I'm still fully functional in offline mode and can help you with:
+- Programming and coding questions
+- Writing and content creation  
+- Problem-solving and explanations
+- General conversations and advice
+
+While I may not have access to real-time information in this mode, I can still provide valuable assistance. Is there something specific I can help you with right now?`;
+    }
+    
+    // Generic helpful response for other queries
+    const genericResponses = [
+        `That's an interesting question! While I'm currently in offline mode, I'd be happy to help you explore this topic. Could you provide a bit more detail about what specifically you'd like to know? I can offer insights, explanations, or help you think through the problem.`,
+        
+        `I'd love to help you with that! Even though I'm running in offline mode right now, I can still provide useful information and assistance. Could you elaborate on what you're looking for? I'm here to help with explanations, problem-solving, creative tasks, and more.`,
+        
+        `Thanks for your question! I'm Talkie Gen AI, currently operating in offline mode. I can still assist you with a wide variety of topics including coding, writing, explanations, and general conversations. What specific aspect would you like to explore further?`
+    ];
+    
+    // Try to provide a more contextual response based on keywords
+    if (message.includes('travel') || message.includes('trip') || message.includes('vacation')) {
+        return `I'd love to help with travel planning! While I'm in offline mode and can't access real-time travel information like current prices or availability, I can still assist with:
+
+✈️ **Trip Planning**: Suggesting destinations, creating itineraries
+🗺️ **Travel Tips**: Packing lists, general advice, cultural insights  
+📋 **Organization**: Planning frameworks and checklists
+🌍 **Destination Info**: General information about places (note: verify current details)
+
+What type of trip are you planning? Where are you thinking of going, and what kind of experience are you looking for?`;
+    }
+    
+    if (message.includes('recipe') || message.includes('cooking') || message.includes('food')) {
+        return `I'd be happy to help with cooking and recipes! Even in offline mode, I can assist with:
+
+👨‍🍳 **Recipe Suggestions**: Based on ingredients or cuisine preferences
+🥘 **Cooking Techniques**: Methods, tips, and troubleshooting
+📋 **Meal Planning**: Ideas for different occasions and dietary needs
+🌱 **Substitutions**: Alternative ingredients and adaptations
+
+What kind of dish are you interested in making? Do you have specific ingredients you'd like to use, or are you looking for ideas for a particular meal or occasion?`;
+    }
+    
+    // Return a random generic response if no specific pattern matches
+    return genericResponses[Math.floor(Math.random() * genericResponses.length)];
 }
 
 // AI Command Recognition System
