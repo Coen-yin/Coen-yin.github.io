@@ -1864,7 +1864,12 @@ async function sendMessage() {
     try {
         const response = await getAIResponse(messageContent);
         hideTypingIndicator();
-        addMessage('assistant', response);
+        
+        // Only add message if response is not null (null means it was already added)
+        if (response !== null) {
+            addMessage('assistant', response);
+        }
+        
         // Ensure scroll after AI response
         forceScrollToBottom();
     } catch (error) {
@@ -1884,10 +1889,19 @@ async function getAIResponse(userMessage) {
     sendButton.disabled = true;
 
     // Check for special AI commands first
-    const commandResponse = checkAICommands(userMessage);
+    const commandResponse = await checkAICommands(userMessage);
     if (commandResponse) {
         isGenerating = false;
         sendButton.disabled = false;
+        
+        // Special handling for image generation commands
+        if (commandResponse.startsWith('<div data-message-id=')) {
+            // This is an image generation command - add the message directly
+            // and return a signal that no further processing is needed
+            addRawHTMLMessage('assistant', commandResponse);
+            return null; // Don't process further
+        }
+        
         return commandResponse;
     }
 
@@ -2034,6 +2048,23 @@ CURRENT CONTEXT:
         // Check if Puter is available
         if (typeof puter === 'undefined') {
             console.warn('Puter SDK not available, using fallback AI response system');
+            
+            // Even in fallback mode, check for AI commands first
+            const commandResponse = await checkAICommands(userMessage);
+            if (commandResponse) {
+                // For image generation commands that return HTML, we need special handling
+                if (commandResponse.startsWith('<div data-message-id=')) {
+                    // This is an image generation command - add the message directly
+                    addRawHTMLMessage('assistant', commandResponse);
+                    isGenerating = false;
+                    sendButton.disabled = false;
+                    return null; // Don't process further
+                }
+                isGenerating = false;
+                sendButton.disabled = false;
+                return commandResponse;
+            }
+            
             aiResponse = await getFallbackAIResponse(userMessage, contextMessages, hasImageData);
         } else {
             // Use Puter AI chat with the correct API call
@@ -2338,7 +2369,30 @@ What kind of dish are you interested in making? Do you have specific ingredients
 }
 
 // AI Command Recognition System
-function checkAICommands(userMessage) {
+async function checkAICommands(userMessage) {
+    // Allow image generation commands for all users (authenticated or not)
+    // Check for image generation commands first
+    const imageGenerationPatterns = [
+        /generate (?:an? )?image (?:of )?(.*)/i,
+        /create (?:an? )?image (?:of )?(.*)/i,
+        /make (?:an? )?image (?:of )?(.*)/i,
+        /draw (?:an? )?image (?:of )?(.*)/i,
+        /show me (?:an? )?image (?:of )?(.*)/i,
+        /generate (?:a )?picture (?:of )?(.*)/i,
+        /create (?:a )?picture (?:of )?(.*)/i,
+        /make (?:a )?picture (?:of )?(.*)/i
+    ];
+    
+    // Check for image generation patterns
+    for (const pattern of imageGenerationPatterns) {
+        const match = userMessage.match(pattern);
+        if (match) {
+            const prompt = match[1] ? match[1].trim() : 'a beautiful landscape';
+            return await generateImageCommand(prompt);
+        }
+    }
+    
+    // For other commands, require authentication
     if (!currentUser) return null;
     
     // Safety check for undefined or null userMessage
@@ -2432,28 +2486,6 @@ function checkAICommands(userMessage) {
             return "I can't promote you to admin. Only the site owner can grant admin privileges. You can ask the owner for admin access if needed.";
         }
     }
-    
-    // Check for image generation commands
-    const imageGenerationPatterns = [
-        /generate (?:an? )?image (?:of )?(.*)/i,
-        /create (?:an? )?image (?:of )?(.*)/i,
-        /make (?:an? )?image (?:of )?(.*)/i,
-        /draw (?:an? )?image (?:of )?(.*)/i,
-        /show me (?:an? )?image (?:of )?(.*)/i,
-        /generate (?:a )?picture (?:of )?(.*)/i,
-        /create (?:a )?picture (?:of )?(.*)/i,
-        /make (?:a )?picture (?:of )?(.*)/i
-    ];
-    
-    // Check for image generation patterns
-    for (const pattern of imageGenerationPatterns) {
-        const match = userMessage.match(pattern);
-        if (match) {
-            const prompt = match[1] ? match[1].trim() : 'a beautiful landscape';
-            return generateImageCommand(prompt);
-        }
-    }
-    
     return null; // No command recognized
 }
 
@@ -2607,16 +2639,38 @@ async function generateImageCommand(prompt) {
         
         // Check if Puter SDK is available
         if (typeof puter === 'undefined') {
-            return `🖼️ **Image Generation Requested** - "${prompt}"
+            // Create a fallback that still uses the HTML structure for consistency
+            const messageId = 'img-gen-' + Date.now();
+            
+            // Add a placeholder message that will be updated with fallback content
+            const placeholderMessage = `🎨 **Generating image:** "${prompt}"
 
-⚠️ Image generation is currently unavailable (Puter SDK not loaded). This feature will work in the production environment.
-
-The image would be generated using the following code:
-\`\`\`javascript
-await puter.ai.txt2img('${prompt}', true);
-\`\`\`
-
-Please try again later when the service is fully available.`;
+🔄 Creating your image, please wait...`;
+            
+            // Use setTimeout to simulate the async process and show fallback
+            setTimeout(() => {
+                // Find the message element and update it with fallback information
+                const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageElement) {
+                    messageElement.innerHTML = `
+                        <div class="generated-image-container error">
+                            <h4>🖼️ Image Generation Requested: "${prompt}"</h4>
+                            <p><strong>Status:</strong> ⚠️ Service temporarily unavailable</p>
+                            <p><strong>Reason:</strong> Image generation requires external services that are currently offline.</p>
+                            <div class="fallback-preview">
+                                <div class="placeholder-image">
+                                    <i class="fas fa-image" style="font-size: 48px; color: #666;"></i>
+                                    <p>Image would appear here: "${prompt}"</p>
+                                </div>
+                            </div>
+                            <p><em>This feature will work in the production environment with full service access.</em></p>
+                        </div>
+                    `;
+                }
+            }, 2000); // 2 second delay to simulate generation
+            
+            // Return the placeholder message with the unique ID
+            return `<div data-message-id="${messageId}">${placeholderMessage}</div>`;
         }
         
         // Generate a unique message ID for this image generation
@@ -2640,25 +2694,22 @@ Please try again later when the service is fully available.`;
                 // Find the message element and update it with the image
                 const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
                 if (messageElement) {
-                    const contentDiv = messageElement.querySelector('.message-content');
-                    if (contentDiv) {
-                        contentDiv.innerHTML = `
-                            <div class="generated-image-container">
-                                <h4>🎨 Generated Image: "${prompt}"</h4>
-                                <div class="image-wrapper">
-                                    ${image.outerHTML}
-                                </div>
-                                <div class="image-actions">
-                                    <button onclick="downloadGeneratedImage(this)" class="image-action-btn">
-                                        <i class="fas fa-download"></i> Download
-                                    </button>
-                                    <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn">
-                                        <i class="fas fa-redo"></i> Regenerate
-                                    </button>
-                                </div>
+                    messageElement.innerHTML = `
+                        <div class="generated-image-container">
+                            <h4>🎨 Generated Image: "${prompt}"</h4>
+                            <div class="image-wrapper">
+                                ${image.outerHTML}
                             </div>
-                        `;
-                    }
+                            <div class="image-actions">
+                                <button onclick="downloadGeneratedImage(this)" class="image-action-btn">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn">
+                                    <i class="fas fa-redo"></i> Regenerate
+                                </button>
+                            </div>
+                        </div>
+                    `;
                 }
                 
                 showToast('🎨 Image generated successfully!', 'success');
@@ -2669,21 +2720,18 @@ Please try again later when the service is fully available.`;
                 // Update the message with error information
                 const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
                 if (messageElement) {
-                    const contentDiv = messageElement.querySelector('.message-content');
-                    if (contentDiv) {
-                        contentDiv.innerHTML = `
-                            <div class="generated-image-container error">
-                                <h4>❌ Image Generation Failed</h4>
-                                <p><strong>Prompt:</strong> "${prompt}"</p>
-                                <p><strong>Error:</strong> ${error.message}</p>
-                                <div class="image-actions">
-                                    <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn retry">
-                                        <i class="fas fa-redo"></i> Try Again
-                                    </button>
-                                </div>
+                    messageElement.innerHTML = `
+                        <div class="generated-image-container error">
+                            <h4>❌ Image Generation Failed</h4>
+                            <p><strong>Prompt:</strong> "${prompt}"</p>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <div class="image-actions">
+                                <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn retry">
+                                    <i class="fas fa-redo"></i> Try Again
+                                </button>
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
                 }
                 
                 showToast('❌ Image generation failed. Please try again.', 'error');
@@ -2800,6 +2848,30 @@ async function regenerateImage(prompt, messageId) {
     }
 }
 
+// Function to add a message with raw HTML content (for special cases like image generation)
+function addRawHTMLMessage(role, htmlContent) {
+    const chat = chats[currentChatId];
+    const message = { role, content: htmlContent, timestamp: Date.now(), isHTML: true };
+    
+    chat.messages.push(message);
+    
+    if (role === 'user' && chat.messages.length === 1) {
+        // Extract text content for title
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+        chat.title = textContent.length > 40 ? textContent.substring(0, 40) + '...' : textContent;
+        document.title = `${chat.title} - Talkie Gen AI`;
+    }
+    
+    renderRawHTMLMessage(message);
+    
+    // Force scroll after adding message
+    setTimeout(() => {
+        forceScrollToBottom();
+    }, 50);
+}
+
 function addMessage(role, content) {
     // Ensure content is always a string
     if (content === null || content === undefined) {
@@ -2839,9 +2911,36 @@ function addMessage(role, content) {
     }, 50);
 }
 
+function renderRawHTMLMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message';
+    
+    const isUser = message.role === 'user';
+    const avatarContent = isUser ? 'C' : '<img src="talkiegen.png" alt="Talkie Gen AI">';
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            <div class="message-avatar ${isUser ? 'user' : 'ai'}">
+                ${avatarContent}
+            </div>
+            <div class="message-text">
+                ${message.content}
+            </div>
+        </div>
+    `;
+    
+    messagesArea.appendChild(messageDiv);
+}
+
 function renderMessages(messages) {
     messagesArea.innerHTML = '';
-    messages.forEach(renderMessage);
+    messages.forEach(message => {
+        if (message.isHTML) {
+            renderRawHTMLMessage(message);
+        } else {
+            renderMessage(message);
+        }
+    });
     // Force scroll after rendering all messages
     setTimeout(() => {
         forceScrollToBottom();
