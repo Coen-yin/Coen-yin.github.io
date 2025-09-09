@@ -1,6 +1,27 @@
-// API Configuration - Updated with OpenRouter API
-const OPENROUTER_API_KEY = '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';
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// API Configuration - Updated with Puter API
+// Note: OpenRouter configuration replaced with Puter
+// const OPENROUTER_API_KEY = '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';
+// const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// Puter API Configuration
+let puter = null;
+
+// Initialize Puter API
+function initializePuter() {
+    try {
+        if (typeof Puter !== 'undefined') {
+            puter = new Puter({
+                model: 'gpt-5-nano', // Specify the model you wish to use
+                stream: true,        // Enable streaming responses
+            });
+            console.log('✅ Puter API initialized successfully with GPT-5 nano model');
+        } else {
+            console.warn('⚠️ Puter SDK not loaded - AI features will be disabled');
+        }
+    } catch (error) {
+        console.error('❌ Error initializing Puter API:', error);
+    }
+}
 
 // Appwrite Configuration
 const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
@@ -127,6 +148,7 @@ let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
+    initializePuter(); // Initialize Puter API
     initializeTheme();
     initializeAppwrite(); // Initialize Appwrite auth
     initializeAdmin(); // Initialize admin system
@@ -1954,49 +1976,17 @@ CURRENT CONTEXT:
     ];
 
     try {
-        // Prepare the request body
-        const requestBody = {
-            model: 'deepseek/deepseek-chat-v3.1:free',
-            messages: messages,
-            temperature: 0.3,
-            max_tokens: 65536,
-            top_p: 1,
-            stream: false
-        };
-
-        // Note: Web search tools disabled for DeepSeek free tier model
-        // Add tools if web search is enabled
-        // if (conversationSettings.enableWebSearch) {
-        //     requestBody.tool_choice = "auto";
-        //     requestBody.tools = [
-        //         {
-        //             "type": "browser_search"
-        //         }
-        //     ];
-        // }
-
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            console.error('API Error Response:', errorData);
-            throw new Error(`API Error ${response.status}: ${errorData?.error?.message || response.statusText}`);
+        // Check if Puter is available
+        if (!puter) {
+            throw new Error('Puter API not initialized. Please refresh the page.');
         }
 
-        const data = await response.json();
-        
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error('Invalid API response format');
-        }
+        // Create the user message for Puter (it expects a simple string)
+        // We'll combine the system message with the user message for context
+        const contextualMessage = `${systemContent}\n\nUser: ${userMessage}`;
 
-        const aiResponse = data.choices[0].message.content;
+        // Get AI response using Puter's chat method
+        const aiResponse = await puter.chat(contextualMessage);
         
         // Update user memory with the conversation
         updateUserMemory(userMessage, aiResponse);
@@ -2004,16 +1994,16 @@ CURRENT CONTEXT:
         return aiResponse;
 
     } catch (error) {
-        console.error('OpenRouter API Error:', error);
+        console.error('Puter API Error:', error);
         
-        if (error.message.includes('401')) {
-            throw new Error('Invalid API key');
-        } else if (error.message.includes('429')) {
+        if (error.message.includes('API not initialized')) {
+            throw new Error('AI service not available. Please refresh the page.');
+        } else if (error.message.includes('rate limit')) {
             throw new Error('Rate limit exceeded. Please wait a moment');
-        } else if (error.message.includes('500')) {
+        } else if (error.message.includes('server')) {
             throw new Error('Server error. Please try again');
         } else {
-            throw new Error(error.message);
+            throw new Error(`AI Error: ${error.message}`);
         }
     } finally {
         isGenerating = false;
