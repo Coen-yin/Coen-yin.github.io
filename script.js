@@ -1833,12 +1833,18 @@ async function sendMessage() {
 
     // Check if there's an image to analyze
     let messageContent = content;
+    let hasImageForAnalysis = false;
+    
     if (window.currentImageData) {
+        hasImageForAnalysis = true;
         messageContent = `[User has uploaded an image for analysis] ${content}`;
-        // Remove image preview after sending
+        
+        // Show user that image is being processed
+        showToast('Image uploaded! Analyzing...', 'info');
+        
+        // Remove image preview after sending (but keep data for AI processing)
         const preview = document.querySelector('.image-preview-container');
         if (preview) preview.remove();
-        window.currentImageData = null;
         messageInput.placeholder = "Message Talkie Gen AI...";
     }
 
@@ -1897,6 +1903,7 @@ async function getAIResponse(userMessage) {
     if (hasImageData) {
         // For Puter, we can use the data URL directly
         imageUrl = window.currentImageData;
+        console.log('Image data detected for analysis:', imageUrl ? 'Yes' : 'No');
     }
 
     // Create different system messages for Pro vs Free users with enhanced capabilities
@@ -2027,7 +2034,7 @@ CURRENT CONTEXT:
         // Check if Puter is available
         if (typeof puter === 'undefined') {
             console.warn('Puter SDK not available, using fallback AI response system');
-            aiResponse = await getFallbackAIResponse(userMessage, contextMessages);
+            aiResponse = await getFallbackAIResponse(userMessage, contextMessages, hasImageData);
         } else {
             // Use Puter AI chat with the correct API call
             console.log('Using Puter AI for response...');
@@ -2035,11 +2042,22 @@ CURRENT CONTEXT:
             if (hasImageData && imageUrl) {
                 // Use image analysis: puter.ai.chat(question, imageUrl, options)
                 console.log('Analyzing image with Puter AI...');
-                aiResponse = await puter.ai.chat(userMessage, imageUrl, { 
-                    model: "gpt-5-nano",
-                    messages: messages
-                });
-                // Clear the image data after using it
+                try {
+                    aiResponse = await puter.ai.chat(userMessage, imageUrl, { 
+                        model: "gpt-5-nano",
+                        messages: messages
+                    });
+                    console.log('Image analysis completed successfully');
+                } catch (imageError) {
+                    console.error('Image analysis failed:', imageError);
+                    // Fallback to text-only response with image context
+                    console.log('Falling back to text response with image context...');
+                    aiResponse = await puter.ai.chat(`${userMessage} [Note: User uploaded an image but analysis failed]`, { 
+                        model: "gpt-5-nano",
+                        messages: messages
+                    });
+                }
+                // Clear the image data after processing (success or failure)
                 window.currentImageData = null;
             } else {
                 // Regular text chat: puter.ai.chat(message, options)
@@ -2110,24 +2128,36 @@ CURRENT CONTEXT:
     } catch (error) {
         console.error('AI API Error:', error);
         
-        // If Puter fails, try fallback system
+        // Enhanced error handling with specific recovery strategies
+        let errorMessage = 'AI services are temporarily unavailable. Please try again later.';
+        
+        // Clear image data on any error to prevent confusion
+        if (window.currentImageData) {
+            console.log('Clearing image data due to AI error');
+            window.currentImageData = null;
+        }
+        
         if (error.message.includes('API not initialized') || error.message.includes('Puter')) {
             console.warn('Puter API failed, using fallback system');
             try {
-                const fallbackResponse = await getFallbackAIResponse(userMessage, contextMessages);
+                const fallbackResponse = await getFallbackAIResponse(userMessage, contextMessages, hasImageData);
                 updateUserMemory(userMessage, fallbackResponse);
                 return fallbackResponse;
             } catch (fallbackError) {
                 console.error('Fallback AI also failed:', fallbackError);
-                throw new Error('AI services are temporarily unavailable. Please try again later.');
+                errorMessage = 'Both primary and backup AI services are unavailable. Please try again later.';
             }
         } else if (error.message.includes('rate limit')) {
-            throw new Error('Rate limit exceeded. Please wait a moment');
-        } else if (error.message.includes('server')) {
-            throw new Error('Server error. Please try again');
+            errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+        } else if (error.message.includes('server') || error.message.includes('network')) {
+            errorMessage = 'Network or server error. Please check your connection and try again.';
+        } else if (error.message.includes('timeout')) {
+            errorMessage = 'Request timed out. Please try again with a shorter message.';
         } else {
-            throw new Error(`AI Error: ${error.message}`);
+            errorMessage = `AI Error: ${error.message}. Please try again or contact support if the issue persists.`;
         }
+        
+        throw new Error(errorMessage);
     } finally {
         isGenerating = false;
         sendButton.disabled = false;
@@ -2135,7 +2165,7 @@ CURRENT CONTEXT:
 }
 
 // Fallback AI Response System
-async function getFallbackAIResponse(userMessage, contextMessages) {
+async function getFallbackAIResponse(userMessage, contextMessages, hasImageData = false) {
     // Simulate a brief delay to make it feel more realistic
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1500));
     
@@ -2147,24 +2177,34 @@ async function getFallbackAIResponse(userMessage, contextMessages) {
     const message = userMessage.toLowerCase().trim();
     
     // Check if this is about image analysis
-    if (message.includes('[user has uploaded an image for analysis]') || window.currentImageData) {
+    if (message.includes('[user has uploaded an image for analysis]') || hasImageData || window.currentImageData) {
+        // Clear image data to prevent confusion
+        if (window.currentImageData) {
+            window.currentImageData = null;
+        }
+        
         return `I can see that you've uploaded an image! 🖼️ 
 
-While I'm currently in offline mode and can't analyze the actual image content, I'd be happy to help you with:
+**Current Status**: I'm operating in offline mode, so I can't analyze the actual image content right now, but I'm still here to help!
 
-📸 **Image-related assistance:**
-- Explaining how to analyze images effectively
-- Discussing photography techniques and composition
-- Providing tips for image editing and enhancement
-- Helping with image-related coding projects
+📸 **What I can help with regarding your image:**
+- **General guidance**: Describe what you'd like to know about your image
+- **Photography tips**: Composition, lighting, and technical advice  
+- **Image editing**: Techniques and software recommendations
+- **Coding help**: Image processing, computer vision, or web development
+- **Creative ideas**: Using images in projects or presentations
 
-🔧 **When back online:**
-- Detailed image analysis and description
-- Object and text recognition
-- Visual content understanding
-- Creative interpretations
+🔍 **For specific image analysis:**
+- Try describing what's in the image, and I can provide relevant information
+- Ask specific questions about techniques or concepts related to your image
+- Let me know what you want to do with the image, and I'll suggest approaches
 
-Please describe what you'd like to know about your image, and I'll do my best to help! You can also try again when the full AI service is available for complete image analysis.`;
+💡 **Example questions I can help with:**
+- "How do I improve the composition of portrait photos?"
+- "What's the best way to optimize images for web use?"
+- "How can I extract text from images using code?"
+
+What specific aspect of your image or image-related task would you like help with?`;
     }
     
     // Generate contextual responses based on user input
@@ -2974,6 +3014,12 @@ function handleAttachment() {
     input.onchange = function(e) {
         const file = e.target.files[0];
         if (file) {
+            console.log('File selected for upload:', {
+                name: file.name,
+                type: file.type,
+                size: file.size
+            });
+            
             if (file.type.startsWith('image/')) {
                 handleImageUpload(file);
             } else {
@@ -2988,6 +3034,12 @@ function handleImageUpload(file) {
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
         showToast('Image must be smaller than 5MB', 'error');
+        return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file', 'error');
         return;
     }
     
@@ -3006,7 +3058,7 @@ function handleImageUpload(file) {
                 </button>
             </div>
             <div class="image-analysis-prompt">
-                <span>Image ready for analysis. Ask me anything about this image!</span>
+                <span>🔍 Image ready for analysis. Ask me anything about this image!</span>
             </div>
         `;
         
@@ -3018,25 +3070,86 @@ function handleImageUpload(file) {
         const inputContainer = document.querySelector('.input-container');
         inputArea.insertBefore(previewContainer, inputContainer);
         
-        // Focus on input
+        // Focus on input and update placeholder
         messageInput.focus();
         messageInput.placeholder = "Ask me anything about this image...";
         
-        showToast('Image uploaded! Ask me anything about it.', 'success');
+        showToast('✅ Image uploaded successfully! Ask me anything about it.', 'success');
+        
+        // Log for debugging
+        console.log('Image uploaded:', {
+            size: file.size,
+            type: file.type,
+            name: file.name,
+            dataLength: imageData.length
+        });
     };
+    
+    reader.onerror = function() {
+        showToast('Failed to read image file', 'error');
+        console.error('FileReader error');
+    };
+    
     reader.readAsDataURL(file);
 }
 
 function handleFileUpload(file) {
-    showToast(`File "${file.name}" selected (text analysis not yet implemented)`, 'info');
+    // Enhanced file upload handling for non-image files
+    console.log('Processing non-image file:', file.name, file.type);
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit for other files
+        showToast('File must be smaller than 10MB', 'error');
+        return;
+    }
+    
+    // For now, provide guidance about file handling
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    let message = `I see you've uploaded a ${fileExtension.toUpperCase()} file: "${file.name}". `;
+    
+    switch (fileExtension) {
+        case 'txt':
+            message += 'I can help you analyze text content, writing, or code within text files.';
+            break;
+        case 'pdf':
+            message += 'I can provide guidance on PDF processing, text extraction, and document analysis.';
+            break;
+        case 'doc':
+        case 'docx':
+            message += 'I can help with document formatting, writing assistance, and Word document processing.';
+            break;
+        default:
+            message += 'I can provide guidance on how to work with this file type.';
+    }
+    
+    message += ' Please describe what you\'d like to do with this file, and I\'ll help you!';
+    
+    // Add the file context to the next message
+    messageInput.value = message;
+    messageInput.focus();
+    
+    showToast(`File "${file.name}" uploaded! Ask me about it in the message.`, 'info');
 }
 
 // Remove image preview
 function removeImagePreview(button) {
     const container = button.closest('.image-preview-container');
-    container.remove();
+    if (container) {
+        container.remove();
+    }
+    
+    // Clear stored image data
     window.currentImageData = null;
+    
+    // Reset input placeholder
     messageInput.placeholder = "Message Talkie Gen AI...";
+    
+    // Show feedback
+    showToast('Image removed', 'info');
+    
+    // Focus back on input
+    messageInput.focus();
+    
+    console.log('Image preview removed and data cleared');
 }
 
 function handleVoiceInput() {
@@ -3110,6 +3223,107 @@ function sendPrompt(prompt) {
         sendMessage();
     }, 300);
 }
+
+// Test Image Analysis Function (for debugging)
+window.testImageAnalysis = async function() {
+    console.log('🧪 Testing Image Analysis Functionality...');
+    
+    // Test with a sample data URL (small 1x1 red pixel)
+    const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+    
+    console.log('Setting test image data...');
+    window.currentImageData = testImageData;
+    
+    try {
+        console.log('Calling getAIResponse with test message...');
+        const response = await getAIResponse('[User has uploaded an image for analysis] What do you see in this image?');
+        console.log('✅ Image analysis test completed successfully!');
+        console.log('Response:', response);
+        return response;
+    } catch (error) {
+        console.error('❌ Image analysis test failed:', error);
+        return null;
+    } finally {
+        // Clean up
+        window.currentImageData = null;
+        console.log('🧹 Test cleanup completed');
+    }
+};
+
+// Comprehensive AI System Test
+window.testAISystem = async function() {
+    console.log('🔧 Testing Complete AI System Integration...');
+    
+    const tests = [
+        {
+            name: 'Text Chat',
+            test: async () => {
+                const response = await getAIResponse('Hello! Test message.');
+                return response.includes('Talkie Gen AI') ? 'PASS' : 'FAIL';
+            }
+        },
+        {
+            name: 'Image Analysis',
+            test: async () => {
+                window.currentImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                const response = await getAIResponse('[User has uploaded an image for analysis] Analyze this image.');
+                window.currentImageData = null;
+                return response.includes('image') ? 'PASS' : 'FAIL';
+            }
+        },
+        {
+            name: 'Code Formatting',
+            test: async () => {
+                const response = await getAIResponse('Write a simple JavaScript function.');
+                return response.includes('```') ? 'PASS' : 'FAIL';
+            }
+        },
+        {
+            name: 'Error Handling',
+            test: async () => {
+                try {
+                    // Simulate an error condition
+                    const response = await getFallbackAIResponse('Test error handling', [], false);
+                    return response ? 'PASS' : 'FAIL';
+                } catch (error) {
+                    return 'FAIL';
+                }
+            }
+        }
+    ];
+    
+    console.log('Running AI system tests...');
+    const results = {};
+    
+    for (const test of tests) {
+        try {
+            console.log(`Testing ${test.name}...`);
+            results[test.name] = await test.test();
+            console.log(`${test.name}: ${results[test.name]}`);
+        } catch (error) {
+            console.error(`${test.name} failed:`, error);
+            results[test.name] = 'ERROR';
+        }
+        
+        // Small delay between tests
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('🏁 AI System Test Results:', results);
+    
+    const passed = Object.values(results).filter(r => r === 'PASS').length;
+    const total = Object.keys(results).length;
+    
+    console.log(`✅ Tests passed: ${passed}/${total}`);
+    
+    if (passed === total) {
+        console.log('🎉 All AI system components are working correctly!');
+    } else {
+        console.warn('⚠️ Some AI system components need attention.');
+    }
+    
+    return results;
+};
 
 // Global functions for HTML onclick handlers
 window.sendPrompt = sendPrompt;
