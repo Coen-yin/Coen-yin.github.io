@@ -1,6 +1,6 @@
-// API Configuration - Updated with working API key
-const GROQ_API_KEY = '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';
-const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// API Configuration - Updated with OpenRouter API
+const OPENROUTER_API_KEY = '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';
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Appwrite Configuration
 const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
@@ -1956,7 +1956,7 @@ CURRENT CONTEXT:
     try {
         // Prepare the request body
         const requestBody = {
-            model: 'openai/gpt-oss-120b',
+            model: 'deepseek/deepseek-chat-v3.1:free',
             messages: messages,
             temperature: 0.3,
             max_tokens: 65536,
@@ -1964,20 +1964,21 @@ CURRENT CONTEXT:
             stream: false
         };
 
+        // Note: Web search tools disabled for DeepSeek free tier model
         // Add tools if web search is enabled
-        if (conversationSettings.enableWebSearch) {
-            requestBody.tool_choice = "auto";
-            requestBody.tools = [
-                {
-                    "type": "browser_search"
-                }
-            ];
-        }
+        // if (conversationSettings.enableWebSearch) {
+        //     requestBody.tool_choice = "auto";
+        //     requestBody.tools = [
+        //         {
+        //             "type": "browser_search"
+        //         }
+        //     ];
+        // }
 
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestBody)
@@ -2003,7 +2004,7 @@ CURRENT CONTEXT:
         return aiResponse;
 
     } catch (error) {
-        console.error('Groq API Error:', error);
+        console.error('OpenRouter API Error:', error);
         
         if (error.message.includes('401')) {
             throw new Error('Invalid API key');
