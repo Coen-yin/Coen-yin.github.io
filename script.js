@@ -2035,12 +2035,18 @@ CURRENT CONTEXT:
             if (hasImageData && imageUrl) {
                 // Use image analysis: puter.ai.chat(question, imageUrl, options)
                 console.log('Analyzing image with Puter AI...');
-                aiResponse = await puter.ai.chat(userMessage, imageUrl, { model: "gpt-5-nano" });
+                aiResponse = await puter.ai.chat(userMessage, imageUrl, { 
+                    model: "gpt-5-nano",
+                    messages: messages
+                });
                 // Clear the image data after using it
                 window.currentImageData = null;
             } else {
                 // Regular text chat: puter.ai.chat(message, options)
-                aiResponse = await puter.ai.chat(userMessage, { model: "gpt-5-nano" });
+                aiResponse = await puter.ai.chat(userMessage, { 
+                    model: "gpt-5-nano",
+                    messages: messages
+                });
             }
         }
         
@@ -2049,16 +2055,26 @@ CURRENT CONTEXT:
             console.warn('AI response is null or undefined, using fallback');
             aiResponse = "I apologize, but I didn't receive a proper response. Could you please try again?";
         } else if (typeof aiResponse !== 'string') {
-            console.warn('AI response is not a string, converting:', typeof aiResponse, aiResponse);
+            console.warn('AI response is not a string, extracting content:', typeof aiResponse, aiResponse);
             try {
-                // Try to convert to string, handling objects and other types
+                // Handle Puter API response object structure
                 if (typeof aiResponse === 'object') {
-                    aiResponse = JSON.stringify(aiResponse);
+                    // Check if it's a Puter API response with message.content structure
+                    if (aiResponse.message && aiResponse.message.content) {
+                        aiResponse = aiResponse.message.content;
+                        console.log('Extracted content from Puter response:', aiResponse);
+                    } else if (aiResponse.content) {
+                        aiResponse = aiResponse.content;
+                    } else {
+                        // Fallback to JSON string if structure is unexpected
+                        console.warn('Unexpected response structure, using JSON string');
+                        aiResponse = JSON.stringify(aiResponse);
+                    }
                 } else {
                     aiResponse = String(aiResponse);
                 }
             } catch (conversionError) {
-                console.error('Failed to convert AI response to string:', conversionError);
+                console.error('Failed to extract content from AI response:', conversionError);
                 aiResponse = "I apologize, but I encountered an error processing the response. Please try again.";
             }
         }
@@ -2066,6 +2082,24 @@ CURRENT CONTEXT:
         // Ensure response is not empty
         if (aiResponse.trim() === '') {
             aiResponse = "I apologize, but I received an empty response. Could you please rephrase your question?";
+        }
+        
+        // Safety filter to replace any ChatGPT identity mentions with Talkie Gen AI
+        if (typeof aiResponse === 'string') {
+            // Replace ChatGPT mentions with Talkie Gen AI
+            aiResponse = aiResponse.replace(/I'm ChatGPT/gi, "I'm Talkie Gen AI");
+            aiResponse = aiResponse.replace(/I am ChatGPT/gi, "I am Talkie Gen AI");
+            aiResponse = aiResponse.replace(/ChatGPT here/gi, "Talkie Gen AI here");
+            aiResponse = aiResponse.replace(/As ChatGPT/gi, "As Talkie Gen AI");
+            aiResponse = aiResponse.replace(/\bChatGPT\b/g, "Talkie Gen AI");
+            
+            // Additional safety replacements for other AI mentions
+            aiResponse = aiResponse.replace(/I'm Claude/gi, "I'm Talkie Gen AI");
+            aiResponse = aiResponse.replace(/I am Claude/gi, "I am Talkie Gen AI");
+            aiResponse = aiResponse.replace(/Claude here/gi, "Talkie Gen AI here");
+            aiResponse = aiResponse.replace(/As Claude/gi, "As Talkie Gen AI");
+            
+            console.log('Applied identity safety filter to response');
         }
         
         // Update user memory with the conversation
