@@ -1959,7 +1959,7 @@ CURRENT CONTEXT:
             model: 'openai/gpt-oss-120b',
             messages: messages,
             temperature: 0.3,
-            max_tokens: 2048,
+            max_tokens: 65536,
             top_p: 1,
             stream: false
         };
