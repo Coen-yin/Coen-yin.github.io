@@ -1,0 +1,24 @@
+{
+  "name": "talkie-gen-ai",
+  "version": "1.0.0",
+  "description": "AI Chat Assistant using OpenRouter with OpenAI SDK",
+  "main": "script.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "serve": "python -m http.server 8000"
+  },
+  "dependencies": {
+    "openai": "^4.57.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^5.0.5",
+    "rollup": "^4.9.6"
+  },
+  "keywords": ["ai", "chat", "openai", "openrouter"],
+  "author": "Coen Yin",
+  "license": "MIT"
+}
