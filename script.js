@@ -3,17 +3,10 @@
 // const OPENROUTER_API_KEY = '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';
 // const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Puter API Configuration
-let puter = null;
-
 // Initialize Puter API
 function initializePuter() {
     try {
-        if (typeof Puter !== 'undefined') {
-            puter = new Puter({
-                model: 'gpt-5-nano', // Specify the model you wish to use
-                stream: true,        // Enable streaming responses
-            });
+        if (typeof puter !== 'undefined') {
             console.log('✅ Puter API initialized successfully with GPT-5 nano model');
         } else {
             console.warn('⚠️ Puter SDK not loaded - Using fallback AI system instead');
@@ -1865,6 +1858,15 @@ async function getAIResponse(userMessage) {
     // Use enhanced context management
     const contextMessages = getEnhancedContext(currentChatId);
 
+    // Check if there's image data to analyze
+    const hasImageData = window.currentImageData;
+    let imageUrl = null;
+    
+    if (hasImageData) {
+        // For Puter, we can use the data URL directly
+        imageUrl = window.currentImageData;
+    }
+
     // Create different system messages for Pro vs Free users with enhanced capabilities
     let systemContent;
     if (currentUser && currentUser.isPro) {
@@ -1913,6 +1915,11 @@ CODE FORMATTING REQUIREMENTS:
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
 
+IMAGE ANALYSIS:
+- When analyzing images, provide detailed, insightful descriptions
+- Identify key elements, colors, composition, mood, and context
+- Offer relevant analysis based on the user's question about the image
+
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
 - You are Talkie Gen AI Pro with enhanced contextual memory and understanding
@@ -1959,6 +1966,11 @@ CODE FORMATTING REQUIREMENTS:
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
 
+IMAGE ANALYSIS:
+- When analyzing images, provide helpful descriptions and insights
+- Focus on what the user is asking about regarding the image
+- Be descriptive and informative about visual elements
+
 CURRENT CONTEXT:
 - Current date and time: ${new Date().toLocaleString()} (UTC)
 - You are Talkie Gen AI with contextual understanding capabilities
@@ -1981,16 +1993,23 @@ CURRENT CONTEXT:
         let aiResponse;
         
         // Check if Puter is available
-        if (!puter) {
+        if (typeof puter === 'undefined') {
             console.warn('Puter SDK not available, using fallback AI response system');
             aiResponse = await getFallbackAIResponse(userMessage, contextMessages);
         } else {
-            // Create the user message for Puter (it expects a simple string)
-            // We'll combine the system message with the user message for context
-            const contextualMessage = `${systemContent}\n\nUser: ${userMessage}`;
-
-            // Get AI response using Puter's chat method
-            aiResponse = await puter.chat(contextualMessage);
+            // Use Puter AI chat with the correct API call
+            console.log('Using Puter AI for response...');
+            
+            if (hasImageData && imageUrl) {
+                // Use image analysis: puter.ai.chat(question, imageUrl, options)
+                console.log('Analyzing image with Puter AI...');
+                aiResponse = await puter.ai.chat(userMessage, imageUrl, { model: "gpt-5-nano" });
+                // Clear the image data after using it
+                window.currentImageData = null;
+            } else {
+                // Regular text chat: puter.ai.chat(message, options)
+                aiResponse = await puter.ai.chat(userMessage, { model: "gpt-5-nano" });
+            }
         }
         
         // Update user memory with the conversation
@@ -2031,6 +2050,27 @@ async function getFallbackAIResponse(userMessage, contextMessages) {
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1500));
     
     const message = userMessage.toLowerCase().trim();
+    
+    // Check if this is about image analysis
+    if (message.includes('[user has uploaded an image for analysis]') || window.currentImageData) {
+        return `I can see that you've uploaded an image! 🖼️ 
+
+While I'm currently in offline mode and can't analyze the actual image content, I'd be happy to help you with:
+
+📸 **Image-related assistance:**
+- Explaining how to analyze images effectively
+- Discussing photography techniques and composition
+- Providing tips for image editing and enhancement
+- Helping with image-related coding projects
+
+🔧 **When back online:**
+- Detailed image analysis and description
+- Object and text recognition
+- Visual content understanding
+- Creative interpretations
+
+Please describe what you'd like to know about your image, and I'll do my best to help! You can also try again when the full AI service is available for complete image analysis.`;
+    }
     
     // Generate contextual responses based on user input
     if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
