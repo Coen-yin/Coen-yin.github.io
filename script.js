@@ -2433,6 +2433,27 @@ function checkAICommands(userMessage) {
         }
     }
     
+    // Check for image generation commands
+    const imageGenerationPatterns = [
+        /generate (?:an? )?image (?:of )?(.*)/i,
+        /create (?:an? )?image (?:of )?(.*)/i,
+        /make (?:an? )?image (?:of )?(.*)/i,
+        /draw (?:an? )?image (?:of )?(.*)/i,
+        /show me (?:an? )?image (?:of )?(.*)/i,
+        /generate (?:a )?picture (?:of )?(.*)/i,
+        /create (?:a )?picture (?:of )?(.*)/i,
+        /make (?:a )?picture (?:of )?(.*)/i
+    ];
+    
+    // Check for image generation patterns
+    for (const pattern of imageGenerationPatterns) {
+        const match = userMessage.match(pattern);
+        if (match) {
+            const prompt = match[1] ? match[1].trim() : 'a beautiful landscape';
+            return generateImageCommand(prompt);
+        }
+    }
+    
     return null; // No command recognized
 }
 
@@ -2574,6 +2595,208 @@ The user will see their new admin status the next time they log in.`;
     } catch (error) {
         console.error('Error promoting user to admin:', error);
         return "Sorry, there was an error promoting the user to admin. Please try again or use the admin panel for user management.";
+    }
+}
+
+// Generate image using Puter AI text-to-image
+async function generateImageCommand(prompt) {
+    try {
+        if (!prompt || prompt.trim() === '') {
+            prompt = 'a beautiful landscape';
+        }
+        
+        // Check if Puter SDK is available
+        if (typeof puter === 'undefined') {
+            return `🖼️ **Image Generation Requested** - "${prompt}"
+
+⚠️ Image generation is currently unavailable (Puter SDK not loaded). This feature will work in the production environment.
+
+The image would be generated using the following code:
+\`\`\`javascript
+await puter.ai.txt2img('${prompt}', true);
+\`\`\`
+
+Please try again later when the service is fully available.`;
+        }
+        
+        // Generate a unique message ID for this image generation
+        const messageId = 'img-gen-' + Date.now();
+        
+        // Add a placeholder message that will be updated with the image
+        const placeholderMessage = `🎨 **Generating image:** "${prompt}"
+
+🔄 Creating your image, please wait...`;
+        
+        // Use setTimeout to make this async and allow the placeholder to show
+        setTimeout(async () => {
+            try {
+                console.log('Generating image with prompt:', prompt);
+                
+                // Use Puter's text-to-image API - setting testMode to true for testing
+                const image = await puter.ai.txt2img(prompt, true);
+                
+                console.log('Image generated successfully:', image);
+                
+                // Find the message element and update it with the image
+                const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageElement) {
+                    const contentDiv = messageElement.querySelector('.message-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = `
+                            <div class="generated-image-container">
+                                <h4>🎨 Generated Image: "${prompt}"</h4>
+                                <div class="image-wrapper">
+                                    ${image.outerHTML}
+                                </div>
+                                <div class="image-actions">
+                                    <button onclick="downloadGeneratedImage(this)" class="image-action-btn">
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                    <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn">
+                                        <i class="fas fa-redo"></i> Regenerate
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                showToast('🎨 Image generated successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error generating image:', error);
+                
+                // Update the message with error information
+                const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageElement) {
+                    const contentDiv = messageElement.querySelector('.message-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = `
+                            <div class="generated-image-container error">
+                                <h4>❌ Image Generation Failed</h4>
+                                <p><strong>Prompt:</strong> "${prompt}"</p>
+                                <p><strong>Error:</strong> ${error.message}</p>
+                                <div class="image-actions">
+                                    <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn retry">
+                                        <i class="fas fa-redo"></i> Try Again
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                showToast('❌ Image generation failed. Please try again.', 'error');
+            }
+        }, 100);
+        
+        // Return the placeholder message with the unique ID
+        return `<div data-message-id="${messageId}">${placeholderMessage}</div>`;
+        
+    } catch (error) {
+        console.error('Error in generateImageCommand:', error);
+        return `❌ **Image Generation Error**
+
+Failed to generate image with prompt: "${prompt}"
+
+**Error:** ${error.message}
+
+Please try again with a different prompt.`;
+    }
+}
+
+// Helper function to download generated images
+function downloadGeneratedImage(button) {
+    try {
+        const imageWrapper = button.closest('.generated-image-container').querySelector('.image-wrapper');
+        const img = imageWrapper.querySelector('img');
+        
+        if (img) {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'talkie-gen-image-' + Date.now() + '.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('📥 Image download started!', 'success');
+        }
+    } catch (error) {
+        console.error('Error downloading image:', error);
+        showToast('❌ Failed to download image', 'error');
+    }
+}
+
+// Helper function to regenerate images
+async function regenerateImage(prompt, messageId) {
+    try {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+        
+        const contentDiv = messageElement.querySelector('.message-content');
+        if (!contentDiv) return;
+        
+        // Show loading state
+        contentDiv.innerHTML = `
+            <div class="generated-image-container">
+                <h4>🎨 Regenerating image: "${prompt}"</h4>
+                <div class="image-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Creating a new version of your image...</p>
+                </div>
+            </div>
+        `;
+        
+        if (typeof puter === 'undefined') {
+            throw new Error('Puter SDK not available');
+        }
+        
+        // Generate new image
+        const image = await puter.ai.txt2img(prompt, true);
+        
+        // Update with new image
+        contentDiv.innerHTML = `
+            <div class="generated-image-container">
+                <h4>🎨 Regenerated Image: "${prompt}"</h4>
+                <div class="image-wrapper">
+                    ${image.outerHTML}
+                </div>
+                <div class="image-actions">
+                    <button onclick="downloadGeneratedImage(this)" class="image-action-btn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn">
+                        <i class="fas fa-redo"></i> Regenerate
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        showToast('🎨 Image regenerated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error regenerating image:', error);
+        
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            const contentDiv = messageElement.querySelector('.message-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    <div class="generated-image-container error">
+                        <h4>❌ Image Regeneration Failed</h4>
+                        <p><strong>Prompt:</strong> "${prompt}"</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <div class="image-actions">
+                            <button onclick="regenerateImage('${prompt.replace(/'/g, "\\'")}', '${messageId}')" class="image-action-btn retry">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        showToast('❌ Image regeneration failed. Please try again.', 'error');
     }
 }
 
@@ -3334,6 +3557,8 @@ window.regenerateMessage = regenerateMessage;
 window.removeImagePreview = removeImagePreview;
 window.copyCodeBlock = copyCodeBlock;
 window.sendFollowUpQuestion = sendFollowUpQuestion;
+window.downloadGeneratedImage = downloadGeneratedImage;
+window.regenerateImage = regenerateImage;
 
 // Admin debugging function (accessible from browser console)
 window.checkAdminAccount = async function() {
