@@ -423,6 +423,11 @@ function updateUserMemory(userMessage, aiResponse) {
 
 // Extract Personal Information
 function extractPersonalInfo(message, memory) {
+    // Safety check for undefined or null message
+    if (!message || typeof message !== 'string') {
+        return;
+    }
+    
     const lowerMessage = message.toLowerCase();
     
     // Extract name
@@ -470,6 +475,11 @@ function extractPersonalInfo(message, memory) {
 
 // Extract Interests and Preferences
 function extractInterestsAndPreferences(message, memory) {
+    // Safety check for undefined or null message
+    if (!message || typeof message !== 'string') {
+        return;
+    }
+    
     const lowerMessage = message.toLowerCase();
     
     // Common interest keywords
@@ -529,6 +539,12 @@ function extractTopics(userMessage, aiResponse, memory) {
 // Extract Topics from Text
 function extractTopicsFromText(text) {
     const topics = [];
+    
+    // Safety check for undefined or null text
+    if (!text || typeof text !== 'string') {
+        return topics;
+    }
+    
     const topicKeywords = [
         'javascript', 'python', 'react', 'node', 'html', 'css', 'programming',
         'machine learning', 'ai', 'blockchain', 'cryptocurrency', 'web development',
@@ -550,6 +566,12 @@ function extractTopicsFromText(text) {
 
 // Update Conversation History
 function updateConversationHistory(userMessage, aiResponse, memory) {
+    // Safety checks for undefined or null parameters
+    if (!userMessage || typeof userMessage !== 'string' || 
+        !aiResponse || typeof aiResponse !== 'string') {
+        return;
+    }
+    
     const entry = {
         timestamp: new Date().toISOString(),
         userMessage: userMessage.substring(0, 100), // Limit length
@@ -568,6 +590,11 @@ function updateConversationHistory(userMessage, aiResponse, memory) {
 // Generate Follow-up Questions
 function generateFollowUpQuestions(aiResponse, context) {
     if (!conversationSettings.enableFollowUps) return [];
+    
+    // Safety check for undefined or null aiResponse
+    if (!aiResponse || typeof aiResponse !== 'string') {
+        return [];
+    }
     
     const followUps = [];
     const lowerResponse = aiResponse.toLowerCase();
@@ -1754,6 +1781,11 @@ function autoResizeTextarea() {
 
 // Content filtering for safety
 function filterInappropriateContent(text) {
+    // Safety check for undefined or null text
+    if (!text || typeof text !== 'string') {
+        return { isAppropriate: true };
+    }
+    
     // List of inappropriate words/phrases to filter
     const inappropriateWords = [
         'fuck', 'shit', 'bitch', 'asshole', 'damn', 'Motherfucker', 'crap', 
@@ -2049,6 +2081,11 @@ async function getFallbackAIResponse(userMessage, contextMessages) {
     // Simulate a brief delay to make it feel more realistic
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1500));
     
+    // Safety check for undefined or null userMessage
+    if (!userMessage || typeof userMessage !== 'string') {
+        return "I apologize, but I didn't receive a valid message. Could you please try again?";
+    }
+    
     const message = userMessage.toLowerCase().trim();
     
     // Check if this is about image analysis
@@ -2205,6 +2242,11 @@ What kind of dish are you interested in making? Do you have specific ingredients
 // AI Command Recognition System
 function checkAICommands(userMessage) {
     if (!currentUser) return null;
+    
+    // Safety check for undefined or null userMessage
+    if (!userMessage || typeof userMessage !== 'string') {
+        return null;
+    }
     
     const message = userMessage.toLowerCase().trim();
     
@@ -2548,6 +2590,11 @@ function createCodeBlock(code, language = '') {
 }
 
 function detectLanguage(code) {
+    // Safety check for undefined or null code
+    if (!code || typeof code !== 'string') {
+        return 'text';
+    }
+    
     const trimmedCode = code.trim().toLowerCase();
     
     // HTML detection
