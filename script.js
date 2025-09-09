@@ -2044,6 +2044,30 @@ CURRENT CONTEXT:
             }
         }
         
+        // Validate and sanitize the AI response
+        if (aiResponse === null || aiResponse === undefined) {
+            console.warn('AI response is null or undefined, using fallback');
+            aiResponse = "I apologize, but I didn't receive a proper response. Could you please try again?";
+        } else if (typeof aiResponse !== 'string') {
+            console.warn('AI response is not a string, converting:', typeof aiResponse, aiResponse);
+            try {
+                // Try to convert to string, handling objects and other types
+                if (typeof aiResponse === 'object') {
+                    aiResponse = JSON.stringify(aiResponse);
+                } else {
+                    aiResponse = String(aiResponse);
+                }
+            } catch (conversionError) {
+                console.error('Failed to convert AI response to string:', conversionError);
+                aiResponse = "I apologize, but I encountered an error processing the response. Please try again.";
+            }
+        }
+        
+        // Ensure response is not empty
+        if (aiResponse.trim() === '') {
+            aiResponse = "I apologize, but I received an empty response. Could you please rephrase your question?";
+        }
+        
         // Update user memory with the conversation
         updateUserMemory(userMessage, aiResponse);
         
@@ -2480,6 +2504,18 @@ The user will see their new admin status the next time they log in.`;
 }
 
 function addMessage(role, content) {
+    // Ensure content is always a string
+    if (content === null || content === undefined) {
+        content = 'Error: No content provided';
+    } else if (typeof content !== 'string') {
+        try {
+            content = String(content);
+        } catch (error) {
+            console.error('Error converting message content to string:', error);
+            content = 'Error: Unable to display message content';
+        }
+    }
+    
     const chat = chats[currentChatId];
     const message = { role, content, timestamp: Date.now() };
     
@@ -2522,18 +2558,22 @@ function renderMessage(message) {
     const isUser = message.role === 'user';
     const avatarContent = isUser ? 'C' : '<img src="talkiegen.png" alt="Talkie Gen AI">';
     
+    // Ensure message content is safe for HTML attributes
+    const safeContent = typeof message.content === 'string' ? message.content : String(message.content || '');
+    const encodedContent = encodeURIComponent(safeContent);
+    
     messageDiv.innerHTML = `
         <div class="message-content">
             <div class="message-avatar ${isUser ? 'user' : 'ai'}">
                 ${avatarContent}
             </div>
             <div class="message-text">
-                ${formatMessage(message.content)}
+                ${formatMessage(safeContent)}
                 <div class="message-actions">
-                    <button class="action-btn" onclick="copyMessage('${encodeURIComponent(message.content)}')" title="Copy message">
+                    <button class="action-btn copy-btn" data-content="${encodedContent}" title="Copy message">
                         <i class="fas fa-copy"></i>
                     </button>
-                    ${!isUser ? `<button class="action-btn" onclick="regenerateMessage('${message.timestamp}')" title="Regenerate response">
+                    ${!isUser ? `<button class="action-btn regen-btn" data-timestamp="${message.timestamp}" title="Regenerate response">
                         <i class="fas fa-redo"></i>
                     </button>` : ''}
                 </div>
@@ -2541,10 +2581,38 @@ function renderMessage(message) {
         </div>
     `;
     
+    // Add event listeners to the buttons
+    const copyBtn = messageDiv.querySelector('.copy-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            copyMessage(copyBtn.getAttribute('data-content'));
+        });
+    }
+    
+    const regenBtn = messageDiv.querySelector('.regen-btn');
+    if (regenBtn) {
+        regenBtn.addEventListener('click', () => {
+            regenerateMessage(regenBtn.getAttribute('data-timestamp'));
+        });
+    }
+    
     messagesArea.appendChild(messageDiv);
 }
 
 function formatMessage(content) {
+    // Ensure content is a string and handle edge cases
+    if (content === null || content === undefined) {
+        content = 'Error: No content received';
+    } else if (typeof content !== 'string') {
+        // Convert non-string content to string
+        try {
+            content = String(content);
+        } catch (error) {
+            console.error('Error converting content to string:', error);
+            content = 'Error: Unable to display content';
+        }
+    }
+    
     return content
         // First handle code blocks (before converting newlines)
         .replace(/```(\w*)\n?([\s\S]*?)```/g, (match, language, code) => {
@@ -2725,22 +2793,31 @@ function copyCodeBlock(blockId) {
 }
 
 function copyMessage(encodedContent) {
-    const content = decodeURIComponent(encodedContent);
-    navigator.clipboard.writeText(content).then(() => {
-        showToast('Message copied to clipboard!', 'success');
-    }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = content;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
+    try {
+        const content = decodeURIComponent(encodedContent);
         
-        showToast('Message copied to clipboard!', 'success');
-    });
+        // Ensure content is a string
+        const contentToCopy = typeof content === 'string' ? content : String(content || 'Empty message');
+        
+        navigator.clipboard.writeText(contentToCopy).then(() => {
+            showToast('Message copied to clipboard!', 'success');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = contentToCopy;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            showToast('Message copied to clipboard!', 'success');
+        });
+    } catch (error) {
+        console.error('Error copying message:', error);
+        showToast('Error copying message', 'error');
+    }
 }
 
 async function regenerateMessage(timestamp) {
