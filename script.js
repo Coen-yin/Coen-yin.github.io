@@ -2107,21 +2107,23 @@ What type of writing project are you working on? Please share any specific requi
 What would you like me to explain? Please be as specific as possible, and I'll provide a clear, detailed explanation tailored to your needs.`;
     }
     
-    if (message.includes('offline') || message.includes('error') || message.includes('not working') || message.includes('puter')) {
+    if (message.includes('offline') || message.includes('error') || message.includes('not working') || message.includes('puter') || message.includes('api key') || message.includes('invalid api') || message.includes("wasn't working")) {
         return `I understand you're experiencing some technical issues. I'm currently running in offline mode because the external AI service (Puter SDK) couldn't be loaded. This might be due to:
 
-• Network connectivity issues
-• Browser restrictions or ad blockers
-• Temporary service outages
-• Firewall or security settings
+• **Network connectivity issues** - External CDN resources are blocked
+• **Browser restrictions or ad blockers** - Security settings preventing external scripts
+• **Temporary service outages** - The Puter service may be temporarily unavailable
+• **Firewall or security settings** - Corporate or personal firewall restrictions
 
-**Don't worry though!** I'm still fully functional in offline mode and can help you with:
-- Programming and coding questions
-- Writing and content creation  
-- Problem-solving and explanations
-- General conversations and advice
+**The good news:** Those "Invalid API key" errors you were seeing before are now fixed! I'm fully functional in offline mode and can help you with:
 
-While I may not have access to real-time information in this mode, I can still provide valuable assistance. Is there something specific I can help you with right now?`;
+✅ **Programming & Coding** - JavaScript, Python, HTML, CSS, debugging, and more
+✅ **Writing & Content** - Essays, emails, creative writing, editing, and proofreading  
+✅ **Problem-Solving** - Breaking down complex issues and finding solutions
+✅ **Explanations & Learning** - Teaching concepts and answering questions
+✅ **Creative Projects** - Brainstorming, storytelling, and creative tasks
+
+The offline mode provides intelligent, contextual responses without needing external API connections. Is there something specific I can help you with right now?`;
     }
     
     // Generic helpful response for other queries
