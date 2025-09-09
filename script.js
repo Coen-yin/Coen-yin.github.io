@@ -2687,7 +2687,7 @@ async function generateImageCommand(prompt) {
                 console.log('Generating image with prompt:', prompt);
                 
                 // Use Puter's text-to-image API - setting testMode to true for testing
-                const image = await puter.ai.txt2img(prompt, true);
+                const image = await puter.ai.txt2img(prompt, false);
                 
                 console.log('Image generated successfully:', image);
                 
