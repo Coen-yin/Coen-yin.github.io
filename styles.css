@@ -3185,3 +3185,184 @@ textarea:focus-visible {
     margin-left: 4px;
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
+
+/* Image Generation Styles */
+.generated-image-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 8px 0;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.generated-image-container:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+}
+
+.generated-image-container.error {
+    border-color: var(--danger);
+    background: rgba(245, 101, 101, 0.05);
+}
+
+.generated-image-container h4 {
+    margin: 0 0 12px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.image-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.image-wrapper img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.image-wrapper:hover img {
+    transform: scale(1.02);
+}
+
+.image-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.image-loading i {
+    font-size: 24px;
+    margin-bottom: 12px;
+    color: var(--accent-primary);
+}
+
+.image-loading p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.image-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.image-action-btn {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.image-action-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.image-action-btn.retry {
+    border-color: var(--warning);
+    color: var(--warning);
+}
+
+.image-action-btn.retry:hover {
+    background: var(--warning);
+    color: white;
+    border-color: var(--warning);
+}
+
+.image-action-btn i {
+    font-size: 12px;
+}
+
+/* Mobile responsive image generation */
+@media (max-width: 768px) {
+    .generated-image-container {
+        padding: 12px;
+        margin: 6px 0;
+    }
+    
+    .image-wrapper {
+        margin: 12px 0;
+    }
+    
+    .image-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .image-action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Dark theme adjustments for image generation */
+[data-theme="dark"] .generated-image-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-light);
+}
+
+[data-theme="dark"] .generated-image-container.error {
+    background: rgba(245, 101, 101, 0.1);
+    border-color: var(--danger);
+}
+
+[data-theme="dark"] .image-wrapper {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Pro theme adjustments */
+[data-theme="pro"] .generated-image-container {
+    background: rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.2);
+}
+
+[data-theme="pro"] .image-action-btn:hover {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    border-color: #ffd700;
+}
+
+/* Owner theme adjustments */
+[data-theme="owner"] .generated-image-container {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.1) 50%, rgba(255, 69, 0, 0.1) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+[data-theme="owner"] .image-action-btn:hover {
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+    color: white;
+    border-color: transparent;
+}
