@@ -21,17 +21,15 @@ function initializePuter() {
 // Appwrite Configuration
 const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
-const APPWRITE_SERVER_KEY = 'standard_19b5bb2db393e1df689b8275ea2129dadbe72f183e10739fe087c76f239a03748b1967ee7bbe653312fa7aaf22595870f2df90a668474c42b6c08ca65e5962335f891d6c4520b48dd7b206dfd6119fd0830d3b2b37cce34aa7c7e660aa03b1ae8f000883fe0852460f1e6510c3d250f55c7ac5eeb3056c93065ebf51b4353c47';
 
 // Initialize Appwrite client
 let appwriteClient = null;
 let appwriteAccount = null;
 let appwriteDatabases = null;
-let appwriteUsers = null; // For admin operations
 
 // Check if Appwrite is available
 if (typeof Appwrite !== 'undefined') {
-    const { Client, Account, Databases, Storage, Teams, Users } = Appwrite;
+    const { Client, Account, Databases, Storage, Teams } = Appwrite;
     appwriteClient = new Client();
     appwriteClient
         .setEndpoint(APPWRITE_ENDPOINT)
@@ -39,15 +37,6 @@ if (typeof Appwrite !== 'undefined') {
 
     appwriteAccount = new Account(appwriteClient);
     appwriteDatabases = new Databases(appwriteClient);
-    
-    // Admin client with server API key for user management
-    const adminClient = new Client();
-    adminClient
-        .setEndpoint(APPWRITE_ENDPOINT)
-        .setProject(APPWRITE_PROJECT_ID)
-        .setKey(APPWRITE_SERVER_KEY);
-    
-    appwriteUsers = new Users(adminClient);
 } else {
     console.warn('Appwrite SDK not loaded - authentication will be disabled');
 }
@@ -162,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkProUpgrade(); // Check for pro upgrade URL
     initializeMemorySystem(); // Initialize enhanced memory system
     handleDocumentationRouting(); // Handle docs URL routing
-    handleEmailVerification(); // Handle email verification if in URL
     setupEventListeners();
     setupCodeBlockEventListeners(); // Setup code block event listeners
     loadChatHistory();
@@ -175,54 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🔧 Debug functions available: checkAdminSystem(), listAllUsers(), syncExistingUserData()');
     console.log('🧪 Testing functions available: debugAISystem(), refreshCodeBlockListeners()');
 });
-
-// Handle email verification
-function handleEmailVerification() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('userId');
-    const secret = urlParams.get('secret');
-    
-    if (userId && secret) {
-        verifyEmail(userId, secret);
-    }
-}
-
-// Verify email with Appwrite
-async function verifyEmail(userId, secret) {
-    try {
-        if (!appwriteAccount) {
-            showToast('Email verification service not available', 'error');
-            return;
-        }
-        
-        await appwriteAccount.updateVerification(userId, secret);
-        showToast('Email verified successfully! You can now use all features.', 'success');
-        
-        // Clean URL
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-        
-        // Refresh user data if logged in
-        if (currentUser) {
-            try {
-                const user = await appwriteAccount.get();
-                currentUser.emailVerification = user.emailVerification;
-                localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-                updateUserInterface();
-            } catch (error) {
-                console.warn('Failed to refresh user data:', error);
-            }
-        }
-        
-    } catch (error) {
-        console.error('Email verification failed:', error);
-        showToast('Email verification failed. The link may be expired or invalid.', 'error');
-        
-        // Clean URL even on failure
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-    }
-}
 
 // Appwrite authentication initialization
 async function initializeAppwrite() {
@@ -1396,15 +1336,6 @@ async function handleSignup(event) {
         
         // Automatically login after successful signup
         await appwriteAccount.createEmailSession(email, password);
-        
-        // Send verification email
-        try {
-            await appwriteAccount.createVerification(window.location.origin + '/verify');
-            showToast('Account created! Please check your email for verification.', 'success');
-        } catch (verificationError) {
-            console.warn('Failed to send verification email:', verificationError);
-            showToast('Account created successfully! (Verification email could not be sent)', 'warning');
-        }
         
         // Get user data
         const user = await appwriteAccount.get();
@@ -5213,47 +5144,20 @@ function hideAdminPanel() {
     document.body.style.overflow = 'auto';
 }
 
-async function loadAdminStats() {
-    try {
-        // Get local stats
-        const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Update stat displays
-        document.getElementById('totalVisitors').textContent = stats.totalVisits || 0;
-        document.getElementById('uniqueVisitors').textContent = stats.uniqueVisitors || 0;
-        document.getElementById('todayVisits').textContent = stats.dailyVisits?.[today] || 0;
-        
-        // Load users from Appwrite if admin
-        if (currentUser && (currentUser.isAdmin || currentUser.isOwner) && appwriteUsers) {
-            try {
-                const appwriteUsersList = await appwriteUsers.list();
-                document.getElementById('registeredUsers').textContent = appwriteUsersList.total || Object.keys(users).length;
-                
-                // Sync Appwrite users with local storage
-                await syncAppwriteUsers(appwriteUsersList.users);
-            } catch (error) {
-                console.warn('Failed to load Appwrite users:', error);
-                document.getElementById('registeredUsers').textContent = Object.keys(users).length;
-            }
-        } else {
-            document.getElementById('registeredUsers').textContent = Object.keys(users).length;
-        }
-        
-        // Load recent activity
-        loadRecentActivity(stats);
-    } catch (error) {
-        console.error('Error loading admin stats:', error);
-    }
-}
-
-// Load recent activity
-function loadRecentActivity(stats) {
-    const activityList = document.getElementById('activityList');
-    if (!activityList) return;
+function loadAdminStats() {
+    const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const today = new Date().toISOString().split('T')[0];
     
-    if (stats && stats.sessions && stats.sessions.length > 0) {
+    // Update stat displays
+    document.getElementById('totalVisitors').textContent = stats.totalVisits || 0;
+    document.getElementById('uniqueVisitors').textContent = stats.uniqueVisitors || 0;
+    document.getElementById('todayVisits').textContent = stats.dailyVisits?.[today] || 0;
+    document.getElementById('registeredUsers').textContent = Object.keys(users).length;
+    
+    // Load recent activity
+    const activityList = document.getElementById('activityList');
+    if (stats.sessions && stats.sessions.length > 0) {
         const recentSessions = stats.sessions.slice(-10).reverse(); // Last 10 sessions
         activityList.innerHTML = recentSessions.map(session => {
             const time = new Date(session.timestamp).toLocaleString();
@@ -5273,42 +5177,6 @@ function loadRecentActivity(stats) {
         }).join('');
     } else {
         activityList.innerHTML = '<div class="no-activity">No recent activity</div>';
-    }
-}
-
-// Sync Appwrite users with local storage
-async function syncAppwriteUsers(appwriteUsers) {
-    try {
-        const localUsers = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        
-        appwriteUsers.forEach(user => {
-            const userData = {
-                name: user.name,
-                email: user.email,
-                appwriteId: user.$id,
-                isPro: localUsers[user.email]?.isPro || false,
-                isAdmin: localUsers[user.email]?.isAdmin || false,
-                isOwner: user.email === 'coenyin9@gmail.com',
-                profilePhoto: user.prefs?.profilePhoto || null,
-                signupDate: user.$createdAt,
-                lastLoginDate: user.accessedAt || user.$createdAt,
-                emailVerification: user.emailVerification,
-                status: user.status ? 'active' : 'inactive'
-            };
-            
-            // Set admin/owner status for the owner account
-            if (userData.isOwner) {
-                userData.isAdmin = true;
-                userData.isPro = true;
-            }
-            
-            localUsers[user.email] = userData;
-        });
-        
-        localStorage.setItem('talkie-users', JSON.stringify(localUsers));
-        console.log('Synced Appwrite users with local storage');
-    } catch (error) {
-        console.error('Error syncing Appwrite users:', error);
     }
 }
 
@@ -5431,60 +5299,54 @@ function setupUsersTable() {
 }
 
 // Load users table
-async function loadUsersTable() {
-    try {
-        let users = {};
+function loadUsersTable() {
+    syncExistingUserData();
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const tbody = document.getElementById('usersTableBody');
+    
+    if (!tbody) return;
+    
+    const userEntries = Object.entries(users);
+    
+    if (userEntries.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <div>No users found in the system</div>
+                    <div style="font-size: 14px; margin-top: 8px;">Users will appear here after they sign up</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = userEntries.map(([email, user]) => {
+        const joinDate = user.signupDate ? new Date(user.signupDate).toLocaleDateString() : 'Unknown';
+        const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate).toLocaleDateString() : 'Never';
+        const isActive = user.isActive !== false; // Default to true if not set
         
-        // Load from Appwrite if admin
-        if (currentUser && (currentUser.isAdmin || currentUser.isOwner) && appwriteUsers) {
-            try {
-                const appwriteUsersList = await appwriteUsers.list();
-                await syncAppwriteUsers(appwriteUsersList.users);
-            } catch (error) {
-                console.warn('Failed to load from Appwrite, using local data:', error);
-            }
+        let roleClass = 'regular';
+        let roleText = 'Regular';
+        if (user.isOwner) {
+            roleClass = 'owner';
+            roleText = 'Owner';
+        } else if (user.isAdmin) {
+            roleClass = 'admin';
+            roleText = 'Admin';
+        } else if (user.isPro) {
+            roleClass = 'pro';
+            roleText = 'Pro';
         }
         
-        // Load local users data
-        users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        
-        const usersTableBody = document.getElementById('usersTableBody');
-        if (!usersTableBody) return;
-        
-        // Clear existing content
-        usersTableBody.innerHTML = '';
-        
-        const userEmails = Object.keys(users);
-        if (userEmails.length === 0) {
-            usersTableBody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-tertiary);">
-                        <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
-                        <div>No users found in the system</div>
-                        <div style="font-size: 14px; margin-top: 8px;">Users will appear here after they sign up</div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        userEmails.forEach(email => {
-            const user = users[email];
-            const isActive = user.status !== 'inactive';
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
+        return `
+            <tr data-user-email="${email}">
                 <td>
-                    <input type="checkbox" class="user-select-checkbox" value="${email}">
+                    <input type="checkbox" class="user-select-checkbox" value="${email}" />
                 </td>
                 <td>
                     <div class="user-info">
-                        <div class="user-avatar">
-                            ${user.profilePhoto ? 
-                                `<img src="${user.profilePhoto}" alt="${user.name}">` : 
-                                user.name.charAt(0).toUpperCase()
-                            }
-                        </div>
+                        <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
                         <div class="user-details">
                             <div class="user-name">${user.name}</div>
                             <div class="user-email">${email}</div>
@@ -5493,51 +5355,37 @@ async function loadUsersTable() {
                 </td>
                 <td>${email}</td>
                 <td>
-                    ${user.isOwner ? 
-                        '<span class="table-role-badge owner">Owner</span>' :
-                        user.isAdmin ? 
-                        '<span class="table-role-badge admin">Admin</span>' :
-                        user.isPro ? 
-                        '<span class="table-role-badge pro">Pro</span>' :
-                        '<span class="table-role-badge">Regular</span>'
-                    }
+                    <span class="table-role-badge ${roleClass}">${roleText}</span>
                 </td>
                 <td>
                     <span class="table-status-badge ${isActive ? 'active' : 'inactive'}">
                         ${isActive ? 'Active' : 'Inactive'}
                     </span>
-                    ${user.emailVerification === false ? 
-                        '<br><small style="color: var(--warning);">Email not verified</small>' : 
-                        user.emailVerification === true ? 
-                        '<br><small style="color: var(--success);">Email verified</small>' : ''
-                    }
                 </td>
-                <td>${user.signupDate ? new Date(user.signupDate).toLocaleDateString() : 'Unknown'}</td>
-                <td>${user.lastLoginDate ? new Date(user.lastLoginDate).toLocaleDateString() : 'Never'}</td>
+                <td>${joinDate}</td>
+                <td>${lastLogin}</td>
                 <td>
                     <div class="table-actions-cell">
-                        <button class="table-action-btn" onclick="showUserEditModal('${email}')" title="Edit User">
+                        <button class="table-action-btn" onclick="editUserFromTable('${email}')" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
+                        <button class="table-action-btn" onclick="toggleUserProFromTable('${email}')" title="Toggle Pro">
+                            <i class="fas fa-crown"></i>
+                        </button>
                         ${!user.isOwner ? `
-                            <button class="table-action-btn danger" onclick="deleteUserFromTable('${email}')" title="Delete User">
+                            <button class="table-action-btn danger" onclick="deleteUserFromTable('${email}')" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
                         ` : ''}
                     </div>
                 </td>
-            `;
-            
-            usersTableBody.appendChild(row);
-        });
-        
-        // Update selected users count
-        updateSelectedUsersCount();
-        
-    } catch (error) {
-        console.error('Error loading users table:', error);
-        showToast('Failed to load users table', 'error');
-    }
+            </tr>
+        `;
+    }).join('');
+    
+    // Setup row click handlers
+    setupTableRowHandlers();
+    updateSelectedUsersCount();
 }
 
 // Setup table row handlers
@@ -6015,7 +5863,7 @@ function hideUserEditModal() {
 }
 
 // Handle user edit form submission
-async function handleUserEditSubmit(event) {
+function handleUserEditSubmit(event) {
     event.preventDefault();
     
     const email = window.currentEditUserEmail;
@@ -6029,73 +5877,51 @@ async function handleUserEditSubmit(event) {
         return;
     }
     
-    // Get form data
-    const newName = document.getElementById('editUserName').value.trim();
-    const newStatus = document.getElementById('editUserIsActive').checked;
-    const newPro = document.getElementById('editUserIsPro').checked;
-    const newAdmin = document.getElementById('editUserIsAdmin').checked;
+    // Update user data
+    user.name = document.getElementById('editUserName').value.trim();
+    user.bio = document.getElementById('editUserBio').value.trim();
+    user.location = document.getElementById('editUserLocation').value.trim();
+    user.timezone = document.getElementById('editUserTimezone').value;
+    user.isActive = document.getElementById('editUserIsActive').checked;
+    user.isPro = document.getElementById('editUserIsPro').checked;
+    user.adminNotes = document.getElementById('editUserNotes').value.trim();
     
-    try {
-        // Update in Appwrite first if possible
-        const appwriteSuccess = await updateUserInAppwrite(email, {
-            name: newName,
-            isActive: newStatus
-        });
-        
-        if (appwriteSuccess) {
-            console.log('User updated in Appwrite successfully');
+    // Only allow admin changes for non-owner users and only by owner
+    if (!user.isOwner && currentUser?.isOwner) {
+        user.isAdmin = document.getElementById('editUserIsAdmin').checked;
+        // Grant Pro when making admin
+        if (user.isAdmin && !user.isPro) {
+            user.isPro = true;
         }
-        
-        // Update user data locally
-        user.name = newName;
-        user.bio = document.getElementById('editUserBio').value.trim();
-        user.location = document.getElementById('editUserLocation').value.trim();
-        user.timezone = document.getElementById('editUserTimezone').value;
-        user.status = newStatus ? 'active' : 'inactive';
-        user.isPro = newPro;
-        user.adminNotes = document.getElementById('editUserNotes').value.trim();
-        
-        // Only allow admin changes for non-owner users and only by owner
-        if (!user.isOwner && currentUser?.isOwner) {
-            user.isAdmin = newAdmin;
-            // Grant Pro when making admin
-            if (user.isAdmin && !user.isPro) {
-                user.isPro = true;
-            }
-        }
-        
-        // Update modification tracking
-        user.lastModified = new Date().toISOString();
-        user.lastModifiedBy = currentUser?.email || 'admin';
-        
-        // Save changes
-        localStorage.setItem('talkie-users', JSON.stringify(users));
-        
-        // Update current user if editing self
-        if (email === currentUser?.email) {
-            currentUser.name = user.name;
-            currentUser.isPro = user.isPro;
-            currentUser.isAdmin = user.isAdmin;
-            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-            updateUserInterface();
-        }
-        
-        // Refresh displays
-        if (document.getElementById('users-list').classList.contains('active')) {
-            await loadUsersTable();
-        }
-        
-        if (selectedUserEmail === email) {
-            searchUser(); // Refresh selected user details
-        }
-        
-        hideUserEditModal();
-        showToast('User updated successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error updating user:', error);
-        showToast('Failed to update user', 'error');
     }
+    
+    // Update modification tracking
+    user.lastModified = new Date().toISOString();
+    user.lastModifiedBy = currentUser?.email || 'admin';
+    
+    // Save changes
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    // Update current user if editing self
+    if (email === currentUser?.email) {
+        currentUser.name = user.name;
+        currentUser.isPro = user.isPro;
+        currentUser.isAdmin = user.isAdmin;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        updateUserInterface();
+    }
+    
+    // Refresh displays
+    if (document.getElementById('users-list').classList.contains('active')) {
+        loadUsersTable();
+    }
+    
+    if (selectedUserEmail === email) {
+        searchUser(); // Refresh selected user details
+    }
+    
+    hideUserEditModal();
+    showToast('User updated successfully!', 'success');
 }
 
 // Toggle user status (active/inactive)
@@ -7168,78 +6994,4 @@ function importData(event) {
     reader.readAsText(file);
     // Reset file input
     event.target.value = '';
-}
-
-// Delete user from table (with Appwrite integration)
-async function deleteUserFromTable(email) {
-    if (!confirm(`Are you sure you want to delete the user "${email}"? This action cannot be undone.`)) {
-        return;
-    }
-    
-    try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const user = users[email];
-        
-        if (!user) {
-            showToast('User not found', 'error');
-            return;
-        }
-        
-        if (user.isOwner) {
-            showToast('Cannot delete the owner account', 'error');
-            return;
-        }
-        
-        // Delete from Appwrite if we have admin access and user ID
-        if (currentUser && (currentUser.isAdmin || currentUser.isOwner) && appwriteUsers && user.appwriteId) {
-            try {
-                await appwriteUsers.delete(user.appwriteId);
-                console.log('User deleted from Appwrite:', email);
-            } catch (error) {
-                console.warn('Failed to delete from Appwrite:', error);
-                // Continue with local deletion
-            }
-        }
-        
-        // Delete from local storage
-        delete users[email];
-        localStorage.setItem('talkie-users', JSON.stringify(users));
-        
-        // Reload the table
-        await loadUsersTable();
-        
-        showToast(`User "${email}" deleted successfully`, 'success');
-        
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        showToast('Failed to delete user', 'error');
-    }
-}
-
-// Update user in Appwrite
-async function updateUserInAppwrite(email, updates) {
-    try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const user = users[email];
-        
-        if (!user || !user.appwriteId || !appwriteUsers) {
-            return false;
-        }
-        
-        // Update name if changed
-        if (updates.name && updates.name !== user.name) {
-            await appwriteUsers.updateName(user.appwriteId, updates.name);
-        }
-        
-        // Update status if changed
-        if (typeof updates.isActive !== 'undefined') {
-            await appwriteUsers.updateStatus(user.appwriteId, updates.isActive);
-        }
-        
-        console.log('User updated in Appwrite:', email);
-        return true;
-    } catch (error) {
-        console.error('Error updating user in Appwrite:', error);
-        return false;
-    }
 }
