@@ -2043,6 +2043,22 @@ CODE FORMATTING REQUIREMENTS:
 - Specify the programming language after the opening backticks
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
+- For web development projects (HTML/CSS/JavaScript), ALWAYS separate into individual code blocks
+- When creating websites, provide HTML, CSS, and JavaScript in separate code blocks with clear language labels
+- For multi-file projects, provide each file in its own code block with appropriate language labels
+- Use descriptive comments in code to explain functionality
+
+WEBSITE CODE ORGANIZATION:
+When providing website code, organize it as follows:
+1. HTML code block (labeled as \`\`\`html)
+2. CSS code block (labeled as \`\`\`css) 
+3. JavaScript code block (labeled as \`\`\`javascript)
+This allows for proper automatic organization and download functionality.
+
+PYTHON AND OTHER LANGUAGES:
+- For Python projects, separate different modules/files into separate code blocks
+- For multi-file projects in any language, provide each file in its own code block
+- Always include appropriate file names in comments at the top of each code block
 
 IMAGE ANALYSIS:
 - When analyzing images, provide detailed, insightful descriptions
@@ -2094,6 +2110,16 @@ CODE FORMATTING REQUIREMENTS:
 - Specify the programming language after the opening backticks
 - For coding questions, provide complete, working examples within code blocks
 - Never provide code without proper markdown formatting
+- For web development projects (HTML/CSS/JavaScript), ALWAYS separate into individual code blocks
+- When creating websites, provide HTML, CSS, and JavaScript in separate code blocks with clear language labels
+- For multi-file projects, provide each file in its own code block with appropriate language labels
+
+WEBSITE CODE ORGANIZATION:
+When providing website code, organize it as follows:
+1. HTML code block (labeled as \`\`\`html)
+2. CSS code block (labeled as \`\`\`css) 
+3. JavaScript code block (labeled as \`\`\`javascript)
+This allows for proper automatic organization and download functionality.
 
 IMAGE ANALYSIS:
 - When analyzing images, provide helpful descriptions and insights
@@ -3475,17 +3501,256 @@ function formatMessage(content) {
         }
     }
     
-    return content
-        // First handle code blocks (before converting newlines)
-        .replace(/```(\w*)\n?([\s\S]*?)```/g, (match, language, code) => {
-            return createCodeBlock(code.trim(), language);
-        })
+    // Enhanced code block processing with sorting and organization
+    const processedContent = processAndSortCodeBlocks(content);
+    
+    return processedContent
         // Then handle other markdown
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>')
         .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function processAndSortCodeBlocks(content) {
+    // Find all code blocks in the content
+    const codeBlockPattern = /```(\w*)\n?([\s\S]*?)```/g;
+    const codeBlocks = [];
+    let match;
+    
+    // Extract all code blocks with their positions
+    while ((match = codeBlockPattern.exec(content)) !== null) {
+        codeBlocks.push({
+            fullMatch: match[0],
+            language: match[1] || '',
+            code: match[2].trim(),
+            index: match.index
+        });
+    }
+    
+    // If we have multiple code blocks, check if they should be organized as a web project
+    if (codeBlocks.length > 1) {
+        const organizedContent = organizeWebProjectCodeBlocks(content, codeBlocks);
+        if (organizedContent !== content) {
+            return organizedContent;
+        }
+        
+        // If not a web project, still sort by language priority
+        return sortCodeBlocksByPriority(content, codeBlocks);
+    }
+    
+    // Single code block - process normally
+    return content.replace(codeBlockPattern, (match, language, code) => {
+        return createCodeBlock(code.trim(), language);
+    });
+}
+
+function organizeWebProjectCodeBlocks(content, codeBlocks) {
+    // Define web languages and their ideal order
+    const webLanguages = ['html', 'css', 'javascript', 'js'];
+    const webLanguageAliases = {
+        'js': 'javascript',
+        'htm': 'html'
+    };
+    
+    // Check if this looks like a web project (has HTML/CSS/JS)
+    const foundWebLanguages = new Set();
+    const webCodeBlocks = [];
+    const otherCodeBlocks = [];
+    
+    codeBlocks.forEach(block => {
+        const normalizedLang = (webLanguageAliases[block.language.toLowerCase()] || block.language.toLowerCase());
+        if (webLanguages.includes(normalizedLang)) {
+            foundWebLanguages.add(normalizedLang);
+            webCodeBlocks.push({...block, normalizedLanguage: normalizedLang});
+        } else {
+            otherCodeBlocks.push(block);
+        }
+    });
+    
+    // Only organize as web project if we have at least 2 web languages
+    if (foundWebLanguages.size < 2) {
+        return content;
+    }
+    
+    // Create sorted web project sections
+    let newContent = content;
+    
+    // Remove all code blocks from content first
+    codeBlocks.forEach(block => {
+        newContent = newContent.replace(block.fullMatch, `__CODEBLOCK_PLACEHOLDER_${block.index}__`);
+    });
+    
+    // Sort web code blocks by preferred order
+    const sortedWebBlocks = webCodeBlocks.sort((a, b) => {
+        const orderA = webLanguages.indexOf(a.normalizedLanguage);
+        const orderB = webLanguages.indexOf(b.normalizedLanguage);
+        return orderA - orderB;
+    });
+    
+    // Create organized web project section
+    const webProjectSection = createWebProjectSection(sortedWebBlocks);
+    
+    // Replace the first web code block placeholder with the organized section
+    const firstWebBlockIndex = Math.min(...webCodeBlocks.map(b => b.index));
+    newContent = newContent.replace(`__CODEBLOCK_PLACEHOLDER_${firstWebBlockIndex}__`, webProjectSection);
+    
+    // Remove other web block placeholders
+    webCodeBlocks.forEach(block => {
+        if (block.index !== firstWebBlockIndex) {
+            newContent = newContent.replace(`__CODEBLOCK_PLACEHOLDER_${block.index}__`, '');
+        }
+    });
+    
+    // Replace remaining placeholders with sorted other code blocks
+    otherCodeBlocks.forEach(block => {
+        const codeBlockHtml = createCodeBlock(block.code, block.language);
+        newContent = newContent.replace(`__CODEBLOCK_PLACEHOLDER_${block.index}__`, codeBlockHtml);
+    });
+    
+    return newContent;
+}
+
+function createWebProjectSection(webCodeBlocks) {
+    const sectionId = 'web-project-' + Math.random().toString(36).substr(2, 9);
+    
+    let sectionHtml = `
+        <div class="web-project-container" id="${sectionId}">
+            <div class="web-project-header">
+                <div class="project-title">
+                    <i class="fas fa-globe"></i>
+                    <span>Complete Website Code</span>
+                    <div class="project-badge">${webCodeBlocks.length} Files</div>
+                </div>
+                <div class="project-actions">
+                    <button class="project-action-btn" onclick="downloadWebProject('${sectionId}')" title="Download all files as ZIP">
+                        <i class="fas fa-download"></i>
+                        <span>Download Project</span>
+                    </button>
+                    <button class="project-action-btn" onclick="copyAllWebCode('${sectionId}')" title="Copy all code">
+                        <i class="fas fa-copy"></i>
+                        <span>Copy All</span>
+                    </button>
+                </div>
+            </div>
+            <div class="web-project-files">
+    `;
+    
+    webCodeBlocks.forEach((block, index) => {
+        const enhancedCodeBlock = createEnhancedWebCodeBlock(
+            block.code, 
+            block.normalizedLanguage, 
+            index,
+            sectionId
+        );
+        sectionHtml += enhancedCodeBlock;
+    });
+    
+    sectionHtml += `
+            </div>
+        </div>
+    `;
+    
+    return sectionHtml;
+}
+
+function createEnhancedWebCodeBlock(code, language, index, projectId) {
+    const blockId = `${projectId}-${language}-${index}`;
+    const langInfo = getLanguageInfo(language);
+    const fileExtension = getFileExtension(language);
+    const lineCount = code.split('\n').length;
+    const showLineNumbers = lineCount > 1;
+    
+    // Generate suggested filename
+    const defaultFilenames = {
+        'html': 'index.html',
+        'css': 'styles.css',
+        'javascript': 'script.js'
+    };
+    const suggestedFilename = defaultFilenames[language] || `file${fileExtension}`;
+    
+    let lineNumbersHtml = '';
+    if (showLineNumbers) {
+        lineNumbersHtml = Array.from({length: lineCount}, (_, i) => 
+            `<span class="line-number">${i + 1}</span>`
+        ).join('\n');
+    }
+    
+    return `
+        <div class="web-file-container" data-language="${language}" data-filename="${suggestedFilename}">
+            <div class="web-file-header">
+                <div class="file-info">
+                    <i class="${langInfo.icon}" style="color: ${langInfo.color}"></i>
+                    <span class="file-name">${suggestedFilename}</span>
+                    <span class="file-size">${lineCount} lines</span>
+                </div>
+                <div class="file-actions">
+                    <button class="code-action-btn" onclick="copyCodeBlock('${blockId}')" title="Copy ${language} code">
+                        <i class="fas fa-copy"></i>
+                        <span class="action-text">Copy</span>
+                    </button>
+                    <button class="code-action-btn" onclick="downloadSingleFile('${blockId}', '${fileExtension}', '${suggestedFilename}')" title="Download ${suggestedFilename}">
+                        <i class="fas fa-download"></i>
+                        <span class="action-text">Download</span>
+                    </button>
+                </div>
+            </div>
+            <div class="web-file-content ${showLineNumbers ? 'with-line-numbers' : ''}">
+                ${showLineNumbers ? `<div class="line-numbers" aria-hidden="true">${lineNumbersHtml}</div>` : ''}
+                <pre class="code-block"><code id="${blockId}" class="language-${language}" data-language="${language}">${escapeHtml(code)}</code></pre>
+            </div>
+        </div>
+    `;
+}
+
+function sortCodeBlocksByPriority(content, codeBlocks) {
+    // Define language priority order (higher priority first)
+    const languagePriority = {
+        'html': 10,
+        'css': 9,
+        'javascript': 8,
+        'js': 8,
+        'typescript': 7,
+        'ts': 7,
+        'python': 6,
+        'py': 6,
+        'java': 5,
+        'cpp': 4,
+        'c': 4,
+        'csharp': 3,
+        'cs': 3,
+        'php': 2,
+        'ruby': 1,
+        'go': 1,
+        'rust': 1
+    };
+    
+    // Sort code blocks by priority
+    const sortedBlocks = codeBlocks.sort((a, b) => {
+        const priorityA = languagePriority[a.language.toLowerCase()] || 0;
+        const priorityB = languagePriority[b.language.toLowerCase()] || 0;
+        return priorityB - priorityA; // Higher priority first
+    });
+    
+    // Replace code blocks in sorted order
+    let newContent = content;
+    
+    // Remove all code blocks first
+    codeBlocks.forEach(block => {
+        newContent = newContent.replace(block.fullMatch, `__CODEBLOCK_PLACEHOLDER_${block.index}__`);
+    });
+    
+    // Replace with sorted blocks
+    let placeholderIndex = 0;
+    sortedBlocks.forEach(block => {
+        const codeBlockHtml = createCodeBlock(block.code, block.language);
+        // Find the next placeholder
+        const placeholderPattern = /__CODEBLOCK_PLACEHOLDER_\d+__/;
+        newContent = newContent.replace(placeholderPattern, codeBlockHtml);
+    });
+    
+    return newContent;
 }
 
 function createCodeBlock(code, language = '') {
@@ -3851,10 +4116,177 @@ function downloadCodeBlock(blockId, fileExtension, languageName) {
         link.click();
         document.body.removeChild(link);
         
-        // Clean up the URL object
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+        URL.revokeObjectURL(url);
+        showToast(`Downloaded ${filename}`, 'success');
+    } catch (error) {
+        console.error('Download failed:', error);
+        showToast('Download failed', 'error');
+    }
+}
+
+// Enhanced web project functions
+function downloadWebProject(projectId) {
+    const projectContainer = document.getElementById(projectId);
+    if (!projectContainer) {
+        console.error('Project container not found:', projectId);
+        showToast('Error: Project not found', 'error');
+        return;
+    }
+    
+    try {
+        const fileContainers = projectContainer.querySelectorAll('.web-file-container');
+        const files = [];
         
-        showToast(`Downloaded as ${filename}`, 'success');
+        fileContainers.forEach(container => {
+            const filename = container.dataset.filename;
+            const codeElement = container.querySelector('code');
+            if (codeElement && filename) {
+                files.push({
+                    name: filename,
+                    content: codeElement.textContent
+                });
+            }
+        });
+        
+        if (files.length === 0) {
+            showToast('No files found to download', 'warning');
+            return;
+        }
+        
+        // Create ZIP file using JSZip (if available) or download files individually
+        if (typeof JSZip !== 'undefined') {
+            createZipAndDownload(files);
+        } else {
+            // Fallback: download files individually
+            downloadFilesIndividually(files);
+        }
+        
+    } catch (error) {
+        console.error('Download failed:', error);
+        showToast('Download failed', 'error');
+    }
+}
+
+function downloadFilesIndividually(files) {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    
+    files.forEach((file, index) => {
+        setTimeout(() => {
+            const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+        }, index * 500); // Stagger downloads to avoid browser blocking
+    });
+    
+    showToast(`Downloading ${files.length} files...`, 'success');
+}
+
+function createZipAndDownload(files) {
+    const zip = new JSZip();
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    
+    files.forEach(file => {
+        zip.file(file.name, file.content);
+    });
+    
+    zip.generateAsync({type: 'blob'}).then(function(content) {
+        const url = URL.createObjectURL(content);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `website-project-${timestamp}.zip`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
+        showToast('Project downloaded as ZIP file!', 'success');
+    }).catch(error => {
+        console.error('ZIP creation failed:', error);
+        downloadFilesIndividually(files);
+    });
+}
+
+function copyAllWebCode(projectId) {
+    const projectContainer = document.getElementById(projectId);
+    if (!projectContainer) {
+        console.error('Project container not found:', projectId);
+        showToast('Error: Project not found', 'error');
+        return;
+    }
+    
+    try {
+        const fileContainers = projectContainer.querySelectorAll('.web-file-container');
+        let allCode = '';
+        
+        fileContainers.forEach(container => {
+            const filename = container.dataset.filename;
+            const language = container.dataset.language;
+            const codeElement = container.querySelector('code');
+            
+            if (codeElement && filename) {
+                const langInfo = getLanguageInfo(language);
+                allCode += `// ========== ${filename.toUpperCase()} (${langInfo.name}) ==========\n`;
+                allCode += codeElement.textContent;
+                allCode += '\n\n';
+            }
+        });
+        
+        if (!allCode.trim()) {
+            showToast('No code found to copy', 'warning');
+            return;
+        }
+        
+        navigator.clipboard.writeText(allCode.trim()).then(() => {
+            showToast('All code copied to clipboard!', 'success');
+        }).catch((error) => {
+            console.error('Failed to copy code:', error);
+            fallbackCopyToClipboard(allCode.trim());
+        });
+        
+    } catch (error) {
+        console.error('Copy failed:', error);
+        showToast('Copy failed', 'error');
+    }
+}
+
+function downloadSingleFile(blockId, fileExtension, suggestedFilename) {
+    const codeElement = document.getElementById(blockId);
+    if (!codeElement) {
+        console.error('Code element not found:', blockId);
+        showToast('Error: Code block not found', 'error');
+        return;
+    }
+    
+    try {
+        const code = codeElement.textContent;
+        const filename = suggestedFilename || `code${fileExtension}`;
+        
+        const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
+        showToast(`Downloaded ${filename}`, 'success');
     } catch (error) {
         console.error('Download failed:', error);
         showToast('Download failed', 'error');
@@ -4456,6 +4888,9 @@ window.copyCodeBlock = copyCodeBlock;
 window.sendFollowUpQuestion = sendFollowUpQuestion;
 window.downloadGeneratedImage = downloadGeneratedImage;
 window.regenerateImage = regenerateImage;
+window.downloadWebProject = downloadWebProject;
+window.copyAllWebCode = copyAllWebCode;
+window.downloadSingleFile = downloadSingleFile;
 
 // Admin debugging function (accessible from browser console)
 window.checkAdminAccount = async function() {
