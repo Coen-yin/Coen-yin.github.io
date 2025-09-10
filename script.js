@@ -3390,44 +3390,91 @@ function formatMessage(content) {
 }
 
 function createCodeBlock(code, language = '') {
-    // Detect language if not specified
-    if (!language) {
-        language = detectLanguage(code);
+    // Input validation and error handling
+    if (!code || typeof code !== 'string') {
+        console.warn('Invalid code provided to createCodeBlock:', code);
+        return '<div class="code-error">Error: Invalid code content</div>';
     }
     
-    // Generate unique ID for the code block
-    const blockId = 'code-' + Math.random().toString(36).substr(2, 9);
-    
-    // Get language display name and icon
-    const langInfo = getLanguageInfo(language.toLowerCase());
-    
-    // Get file extension for download
-    const fileExtension = getFileExtension(language.toLowerCase());
-    
-    return `
-        <div class="code-container">
-            <div class="code-header">
-                <div class="code-language">
-                    <i class="${langInfo.icon}"></i>
-                    <span>${langInfo.name}</span>
+    try {
+        // Detect language if not specified
+        if (!language) {
+            language = detectLanguage(code);
+        }
+        
+        // Generate unique ID for the code block
+        const blockId = 'code-' + Math.random().toString(36).substr(2, 9);
+        
+        // Get language display name and icon
+        const langInfo = getLanguageInfo(language.toLowerCase());
+        
+        // Get file extension for download
+        const fileExtension = getFileExtension(language.toLowerCase());
+        
+        // Count lines for line number feature
+        const lineCount = code.split('\n').length;
+        const showLineNumbers = lineCount > 1; // Show line numbers for multi-line code
+        
+        // Generate line numbers if needed
+        let lineNumbersHtml = '';
+        if (showLineNumbers) {
+            lineNumbersHtml = Array.from({length: lineCount}, (_, i) => 
+                `<span class="line-number">${i + 1}</span>`
+            ).join('\n');
+        }
+        
+        return `
+            <div class="code-container" data-language="${language}">
+                <div class="code-header">
+                    <div class="code-language">
+                        <i class="${langInfo.icon}" style="color: ${langInfo.color}"></i>
+                        <span class="language-name">${langInfo.name}</span>
+                        ${lineCount > 1 ? `<span class="line-count">${lineCount} lines</span>` : ''}
+                    </div>
+                    <div class="code-actions">
+                        <button class="code-action-btn code-copy-btn" 
+                                data-code-id="${blockId}" 
+                                data-action="copy"
+                                title="Copy code to clipboard"
+                                aria-label="Copy code">
+                            <i class="fas fa-copy"></i>
+                            <span class="action-text">Copy</span>
+                        </button>
+                        <button class="code-action-btn code-download-btn" 
+                                data-code-id="${blockId}" 
+                                data-action="download"
+                                data-extension="${fileExtension}"
+                                data-language-name="${langInfo.name}"
+                                title="Download as ${fileExtension} file"
+                                aria-label="Download code as file">
+                            <i class="fas fa-download"></i>
+                            <span class="action-text">Download</span>
+                        </button>
+                        ${lineCount > 5 ? `
+                        <button class="code-action-btn code-fold-btn" 
+                                data-code-id="${blockId}" 
+                                data-action="fold"
+                                title="Toggle code folding"
+                                aria-label="Toggle code folding">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>` : ''}
+                    </div>
+                    </div>
                 </div>
-                <div class="code-actions">
-                    <button class="code-copy-btn" onclick="copyCodeBlock('${blockId}')" title="Copy code">
-                        <i class="fas fa-copy"></i>
-                        <span class="copy-text">Copy</span>
-                    </button>
-                    <button class="code-download-btn" onclick="downloadCodeBlock('${blockId}', '${fileExtension}', '${langInfo.name}')" title="Download as ${fileExtension} file">
-                        <i class="fas fa-download"></i>
-                        <span class="download-text">Download</span>
-                    </button>
+                <div class="code-content ${showLineNumbers ? 'with-line-numbers' : ''}" data-folded="false">
+                    ${showLineNumbers ? `<div class="line-numbers" aria-hidden="true">${lineNumbersHtml}</div>` : ''}
+                    <pre class="code-block"><code id="${blockId}" class="language-${language}" data-language="${language}">${escapeHtml(code)}</code></pre>
                 </div>
             </div>
-            <div class="code-content">
-                <pre><code id="${blockId}" class="language-${language}">${escapeHtml(code)}</code></pre>
-            </div>
-        </div>
-    `;
+        `;
+    } catch (error) {
+        console.error('Error creating code block:', error);
+        return `<div class="code-error">Error: Failed to render code block</div>`;
+    }
 }
+
+// Language detection cache to improve performance
+const languageDetectionCache = new Map();
 
 function detectLanguage(code) {
     // Safety check for undefined or null code
@@ -3435,64 +3482,122 @@ function detectLanguage(code) {
         return 'text';
     }
     
-    const trimmedCode = code.trim().toLowerCase();
-    
-    // HTML detection
-    if (trimmedCode.includes('<!doctype') || trimmedCode.includes('<html') || 
-        trimmedCode.match(/<\/?(div|span|p|h\d|body|head)\b/)) {
-        return 'html';
+    // Check cache first for performance
+    const cacheKey = code.substring(0, 200); // Use first 200 chars as cache key
+    if (languageDetectionCache.has(cacheKey)) {
+        return languageDetectionCache.get(cacheKey);
     }
     
-    // CSS detection
-    if (trimmedCode.includes('{') && trimmedCode.includes('}') && 
-        (trimmedCode.includes(':') && trimmedCode.includes(';'))) {
-        return 'css';
-    }
+    const trimmedCode = code.trim();
+    const lowerCode = trimmedCode.toLowerCase();
+    let detectedLanguage = 'text';
     
-    // SQL detection (check first for more specific patterns)
-    if (trimmedCode.match(/\b(select|insert|update|delete|create|alter|drop|from|where|join|group\s+by|order\s+by)\b/i)) {
-        return 'sql';
-    }
+    // Language detection patterns with priority scoring
+    const patterns = [
+        // High confidence patterns (exact matches)
+        { pattern: /^<\?php/i, language: 'php', confidence: 10 },
+        { pattern: /^#!/, language: 'bash', confidence: 10 },
+        { pattern: /<!doctype\s+html/i, language: 'html', confidence: 10 },
+        
+        // HTML detection (high priority)
+        { pattern: /<\/?(html|head|body|div|span|p|h[1-6]|script|style|meta|link)\b/i, language: 'html', confidence: 9 },
+        
+        // CSS detection (high priority) 
+        { pattern: /^\s*[@]?([\w-]+\s*:\s*[^;]+;|\w+\s*\{[^}]*\})/m, language: 'css', confidence: 9 },
+        
+        // JSON detection (early check for structured data)
+        { pattern: /^\s*[\{\[][\s\S]*[\}\]]\s*$/, language: 'json', confidence: 8, validator: isValidJSON },
+        
+        // SQL detection (check before JavaScript due to keyword overlap)
+        { pattern: /\b(select\s+.*\s+from|insert\s+into|update\s+.*\s+set|create\s+(table|database|index)|alter\s+table|drop\s+(table|database))\b/i, language: 'sql', confidence: 8 },
+        
+        // TypeScript detection (before JavaScript)
+        { pattern: /\b(interface|type\s+\w+\s*=|declare|namespace|enum)\b/, language: 'typescript', confidence: 8 },
+        { pattern: /:\s*(string|number|boolean|any|void|unknown)\b/, language: 'typescript', confidence: 7 },
+        
+        // JavaScript detection (comprehensive patterns)
+        { pattern: /\b(function\s*\w*\s*\(|const\s+\w+\s*=|let\s+\w+|var\s+\w+|=>\s*[\{\(])/i, language: 'javascript', confidence: 7 },
+        { pattern: /\b(console\.(log|error|warn|info)|document\.|window\.|require\(|import\s+.*\s+from)/i, language: 'javascript', confidence: 7 },
+        
+        // Python detection (improved patterns)
+        { pattern: /\b(def\s+\w+\s*\(|import\s+\w+|from\s+\w+\s+import|print\s*\()/i, language: 'python', confidence: 7 },
+        { pattern: /^\s*(if|for|while|class|try|except|with|def)\s+.*:/m, language: 'python', confidence: 6 },
+        
+        // Java detection
+        { pattern: /\b(public\s+(static\s+)?void\s+main|public\s+class\s+\w+|System\.out\.println)/i, language: 'java', confidence: 7 },
+        { pattern: /\b(package\s+\w+|import\s+java\.)/i, language: 'java', confidence: 6 },
+        
+        // C/C++ detection
+        { pattern: /^\s*#include\s*<[\w\.]+>/m, language: 'cpp', confidence: 8 },
+        { pattern: /\b(int\s+main\s*\(|printf\s*\(|cout\s*<<|std::)/i, language: 'cpp', confidence: 7 },
+        
+        // C# detection
+        { pattern: /\b(using\s+System|namespace\s+\w+|Console\.WriteLine)/i, language: 'csharp', confidence: 7 },
+        
+        // Go detection
+        { pattern: /\b(package\s+main|func\s+main\s*\(|fmt\.Print)/i, language: 'go', confidence: 7 },
+        
+        // Rust detection
+        { pattern: /\b(fn\s+main\s*\(|println!\s*\(|use\s+std::)/i, language: 'rust', confidence: 7 },
+        
+        // PHP detection
+        { pattern: /\$\w+|echo\s+.*|<\?php/i, language: 'php', confidence: 7 },
+        
+        // Ruby detection
+        { pattern: /\b(def\s+\w+|puts\s+.*|require\s+.*|end\b)/i, language: 'ruby', confidence: 6 },
+        
+        // Shell/Bash detection
+        { pattern: /\b(echo\s+.*|grep\s+.*|awk\s+.*|sed\s+.*|\|\s*\w+)/i, language: 'bash', confidence: 6 },
+        
+        // Swift detection
+        { pattern: /\b(func\s+\w+|var\s+\w+:|let\s+\w+:|import\s+Foundation)/i, language: 'swift', confidence: 7 },
+        
+        // Kotlin detection
+        { pattern: /\b(fun\s+\w+|val\s+\w+|var\s+\w+.*:|import\s+kotlin)/i, language: 'kotlin', confidence: 7 },
+        
+        // YAML detection
+        { pattern: /^\s*\w+:\s*[^{}\[\]]*$/m, language: 'yaml', confidence: 5 },
+        
+        // XML detection
+        { pattern: /^\s*<\?xml|<\/?\w+[^>]*>/i, language: 'xml', confidence: 6 }
+    ];
     
-    // JavaScript detection
-    if (trimmedCode.includes('function') || trimmedCode.includes('const ') || 
-        trimmedCode.includes('let ') || trimmedCode.includes('var ') ||
-        trimmedCode.includes('=>') || trimmedCode.includes('console.log')) {
-        return 'javascript';
-    }
+    let bestMatch = { language: 'text', confidence: 0 };
     
-    // Python detection
-    if (trimmedCode.includes('def ') || trimmedCode.includes('import ') ||
-        trimmedCode.includes('from ') || trimmedCode.includes('print(') ||
-        trimmedCode.match(/^\s*(if|for|while|class|try|except)[\s:]/m)) {
-        return 'python';
-    }
-    
-    // Java detection
-    if (trimmedCode.includes('public class') || trimmedCode.includes('public static void main') ||
-        trimmedCode.includes('system.out.println')) {
-        return 'java';
-    }
-    
-    // C/C++ detection
-    if (trimmedCode.includes('#include') || trimmedCode.includes('int main') ||
-        trimmedCode.includes('printf(') || trimmedCode.includes('cout <<')) {
-        return 'cpp';
-    }
-    
-    // JSON detection
-    if ((trimmedCode.startsWith('{') && trimmedCode.endsWith('}')) ||
-        (trimmedCode.startsWith('[') && trimmedCode.endsWith(']'))) {
-        try {
-            JSON.parse(code.trim());
-            return 'json';
-        } catch (e) {
-            // Not valid JSON
+    // Test patterns and find the best match
+    for (const { pattern, language, confidence, validator } of patterns) {
+        if (pattern.test(trimmedCode)) {
+            // Additional validation if specified
+            if (validator && !validator(trimmedCode)) {
+                continue;
+            }
+            
+            if (confidence > bestMatch.confidence) {
+                bestMatch = { language, confidence };
+            }
         }
     }
     
-    // Default to plain text
-    return 'text';
+    detectedLanguage = bestMatch.language;
+    
+    // Cache the result (limit cache size to prevent memory issues)
+    if (languageDetectionCache.size > 100) {
+        const firstKey = languageDetectionCache.keys().next().value;
+        languageDetectionCache.delete(firstKey);
+    }
+    languageDetectionCache.set(cacheKey, detectedLanguage);
+    
+    return detectedLanguage;
+}
+
+// Helper function to validate JSON
+function isValidJSON(text) {
+    try {
+        JSON.parse(text);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 function getLanguageInfo(language) {
@@ -3501,9 +3606,13 @@ function getLanguageInfo(language) {
         'css': { name: 'CSS', icon: 'fab fa-css3-alt', color: '#1572b6' },
         'javascript': { name: 'JavaScript', icon: 'fab fa-js-square', color: '#f7df1e' },
         'js': { name: 'JavaScript', icon: 'fab fa-js-square', color: '#f7df1e' },
+        'typescript': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
+        'ts': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
         'python': { name: 'Python', icon: 'fab fa-python', color: '#3776ab' },
         'py': { name: 'Python', icon: 'fab fa-python', color: '#3776ab' },
         'java': { name: 'Java', icon: 'fab fa-java', color: '#ed8b00' },
+        'csharp': { name: 'C#', icon: 'fas fa-code', color: '#239120' },
+        'cs': { name: 'C#', icon: 'fas fa-code', color: '#239120' },
         'cpp': { name: 'C++', icon: 'fas fa-code', color: '#00599c' },
         'c': { name: 'C', icon: 'fas fa-code', color: '#a8b9cc' },
         'json': { name: 'JSON', icon: 'fas fa-brackets-curly', color: '#000000' },
@@ -3516,8 +3625,11 @@ function getLanguageInfo(language) {
         'rust': { name: 'Rust', icon: 'fas fa-code', color: '#ce422b' },
         'swift': { name: 'Swift', icon: 'fab fa-swift', color: '#fa7343' },
         'kotlin': { name: 'Kotlin', icon: 'fas fa-code', color: '#7f52ff' },
-        'typescript': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
-        'ts': { name: 'TypeScript', icon: 'fas fa-code', color: '#007acc' },
+        'yaml': { name: 'YAML', icon: 'fas fa-file-code', color: '#cb171e' },
+        'yml': { name: 'YAML', icon: 'fas fa-file-code', color: '#cb171e' },
+        'xml': { name: 'XML', icon: 'fas fa-code', color: '#e4761f' },
+        'markdown': { name: 'Markdown', icon: 'fab fa-markdown', color: '#083fa1' },
+        'md': { name: 'Markdown', icon: 'fab fa-markdown', color: '#083fa1' },
         'text': { name: 'Text', icon: 'fas fa-file-alt', color: '#6c757d' }
     };
     
@@ -3530,9 +3642,13 @@ function getFileExtension(language) {
         'css': '.css',
         'javascript': '.js',
         'js': '.js',
+        'typescript': '.ts',
+        'ts': '.ts',
         'python': '.py',
         'py': '.py',
         'java': '.java',
+        'csharp': '.cs',
+        'cs': '.cs',
         'cpp': '.cpp',
         'c': '.c',
         'json': '.json',
@@ -3545,93 +3661,177 @@ function getFileExtension(language) {
         'rust': '.rs',
         'swift': '.swift',
         'kotlin': '.kt',
-        'typescript': '.ts',
-        'ts': '.ts',
+        'yaml': '.yml',
+        'yml': '.yml',
+        'xml': '.xml',
+        'markdown': '.md',
+        'md': '.md',
         'text': '.txt'
     };
     
     return extensionMap[language] || '.txt';
 }
 
-function copyCodeBlock(blockId) {
+// Event delegation for code block actions
+document.addEventListener('DOMContentLoaded', function() {
+    // Use event delegation for code block actions
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('.code-action-btn');
+        if (!target) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const action = target.dataset.action;
+        const codeId = target.dataset.codeId;
+        
+        if (!codeId) {
+            console.error('Code ID not found for action:', action);
+            return;
+        }
+        
+        switch (action) {
+            case 'copy':
+                copyCodeBlock(codeId, target);
+                break;
+            case 'download':
+                downloadCodeBlock(codeId, target.dataset.extension, target.dataset.languageName);
+                break;
+            case 'fold':
+                toggleCodeFold(codeId, target);
+                break;
+        }
+    });
+});
+
+function copyCodeBlock(blockId, buttonElement = null) {
     const codeElement = document.getElementById(blockId);
-    if (!codeElement) return;
+    if (!codeElement) {
+        console.error('Code element not found:', blockId);
+        showToast('Error: Code block not found', 'error');
+        return;
+    }
     
     const code = codeElement.textContent;
     
     navigator.clipboard.writeText(code).then(() => {
-        // Find the copy button and show success state
-        const copyBtn = document.querySelector(`button[onclick="copyCodeBlock('${blockId}')"]`);
-        if (copyBtn) {
-            const originalText = copyBtn.querySelector('.copy-text').textContent;
-            const icon = copyBtn.querySelector('i');
+        // Find the copy button if not provided
+        if (!buttonElement) {
+            buttonElement = document.querySelector(`button[data-code-id="${blockId}"][data-action="copy"]`);
+        }
+        
+        if (buttonElement) {
+            const originalText = buttonElement.querySelector('.action-text');
+            const icon = buttonElement.querySelector('i');
+            const originalIconClass = icon.className;
+            const originalTextContent = originalText.textContent;
             
             // Update button to show success
             icon.className = 'fas fa-check';
-            copyBtn.querySelector('.copy-text').textContent = 'Copied!';
-            copyBtn.classList.add('copied');
+            originalText.textContent = 'Copied!';
+            buttonElement.classList.add('copied');
             
             // Reset after 2 seconds
             setTimeout(() => {
-                icon.className = 'fas fa-copy';
-                copyBtn.querySelector('.copy-text').textContent = originalText;
-                copyBtn.classList.remove('copied');
+                icon.className = originalIconClass;
+                originalText.textContent = originalTextContent;
+                buttonElement.classList.remove('copied');
             }, 2000);
         }
-    }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = code;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
         
         showToast('Code copied to clipboard!', 'success');
+    }).catch((error) => {
+        console.error('Failed to copy code:', error);
+        // Fallback for older browsers or clipboard API issues
+        fallbackCopyToClipboard(code);
     });
+}
+
+function fallbackCopyToClipboard(text) {
+    try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            showToast('Code copied to clipboard!', 'success');
+        } else {
+            showToast('Failed to copy code', 'error');
+        }
+    } catch (error) {
+        console.error('Fallback copy failed:', error);
+        showToast('Copy not supported in this browser', 'error');
+    }
 }
 
 function downloadCodeBlock(blockId, fileExtension, languageName) {
     const codeElement = document.getElementById(blockId);
-    if (!codeElement) return;
-    
-    const code = codeElement.textContent;
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const filename = `code-${languageName.toLowerCase()}-${timestamp}${fileExtension}`;
-    
-    // Create blob and download
-    const blob = new Blob([code], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    // Find the download button and show success state
-    const downloadBtn = document.querySelector(`button[onclick*="downloadCodeBlock('${blockId}'"]`);
-    if (downloadBtn) {
-        const originalText = downloadBtn.querySelector('.download-text').textContent;
-        const icon = downloadBtn.querySelector('i');
-        
-        // Update button to show success
-        icon.className = 'fas fa-check';
-        downloadBtn.querySelector('.download-text').textContent = 'Downloaded!';
-        downloadBtn.classList.add('downloaded');
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-            icon.className = 'fas fa-download';
-            downloadBtn.querySelector('.download-text').textContent = originalText;
-            downloadBtn.classList.remove('downloaded');
-        }, 2000);
+    if (!codeElement) {
+        console.error('Code element not found:', blockId);
+        showToast('Error: Code block not found', 'error');
+        return;
     }
     
-    showToast(`Code downloaded as ${filename}`, 'success');
+    try {
+        const code = codeElement.textContent;
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+        const filename = `code-${languageName.toLowerCase()}-${timestamp}${fileExtension}`;
+        
+        const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the URL object
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        showToast(`Downloaded as ${filename}`, 'success');
+    } catch (error) {
+        console.error('Download failed:', error);
+        showToast('Download failed', 'error');
+    }
+}
+
+function toggleCodeFold(blockId, buttonElement) {
+    const codeContainer = document.querySelector(`[data-code-id="${blockId}"]`).closest('.code-container');
+    const codeContent = codeContainer.querySelector('.code-content');
+    const icon = buttonElement.querySelector('i');
+    
+    if (!codeContent) {
+        console.error('Code content not found for folding');
+        return;
+    }
+    
+    const isFolded = codeContent.dataset.folded === 'true';
+    
+    if (isFolded) {
+        // Unfold
+        codeContent.dataset.folded = 'false';
+        codeContent.style.maxHeight = 'none';
+        icon.className = 'fas fa-chevron-up';
+        buttonElement.title = 'Fold code';
+    } else {
+        // Fold
+        codeContent.dataset.folded = 'true';
+        codeContent.style.maxHeight = '150px';
+        icon.className = 'fas fa-chevron-down';
+        buttonElement.title = 'Unfold code';
+    }
 }
 
 function copyMessage(encodedContent) {
