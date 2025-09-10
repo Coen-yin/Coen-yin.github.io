@@ -3693,3 +3693,224 @@ textarea:focus-visible {
     color: white;
     border-color: transparent;
 }
+
+/* Font Awesome Fallback Icons - When CDN is blocked */
+/* This provides Unicode symbols as fallbacks for Font Awesome icons */
+.fas, .far, .fab {
+    font-family: 'Arial', sans-serif;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    display: inline-block;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Common icon fallbacks using Unicode characters */
+.fa-plus::before { content: "+" !important; font-weight: bold; }
+.fa-chevron-up::before { content: "▲" !important; font-size: 0.8em; }
+.fa-chevron-down::before { content: "▼" !important; font-size: 0.8em; }
+.fa-sign-in-alt::before { content: "→" !important; }
+.fa-user-plus::before { content: "+" !important; }
+.fa-user::before { content: "👤" !important; }
+.fa-shield-alt::before { content: "🛡" !important; }
+.fa-moon::before { content: "🌙" !important; }
+.fa-sun::before { content: "☀" !important; }
+.fa-download::before { content: "⬇" !important; }
+.fa-trash::before { content: "🗑" !important; }
+.fa-sign-out-alt::before { content: "←" !important; }
+.fa-bars::before { content: "☰" !important; }
+.fa-book::before { content: "📖" !important; }
+.fa-share::before { content: "📤" !important; }
+.fa-cog::before { content: "⚙" !important; }
+.fa-settings::before { content: "⚙" !important; }
+.fa-atom::before { content: "⚛" !important; }
+.fa-code::before { content: "</>" !important; font-family: monospace; }
+.fa-plane::before { content: "✈" !important; }
+.fa-pen::before { content: "✎" !important; }
+.fa-pencil::before { content: "✎" !important; }
+.fa-arrow-right::before { content: "→" !important; }
+.fa-arrow-left::before { content: "←" !important; }
+.fa-arrow-up::before { content: "↑" !important; }
+.fa-arrow-down::before { content: "↓" !important; }
+.fa-copy::before { content: "📋" !important; }
+.fa-redo::before { content: "↻" !important; }
+.fa-refresh::before { content: "↻" !important; }
+.fa-paperclip::before { content: "📎" !important; }
+.fa-microphone::before { content: "🎤" !important; }
+.fa-send::before { content: "➤" !important; }
+.fa-paper-plane::before { content: "✈" !important; }
+.fa-times::before { content: "×" !important; font-weight: bold; }
+.fa-close::before { content: "×" !important; font-weight: bold; }
+.fa-check::before { content: "✓" !important; font-weight: bold; }
+.fa-info::before { content: "ℹ" !important; }
+.fa-warning::before { content: "⚠" !important; }
+.fa-exclamation::before { content: "!" !important; }
+.fa-question::before { content: "?" !important; }
+.fa-star::before { content: "★" !important; }
+.fa-heart::before { content: "♥" !important; }
+.fa-thumbs-up::before { content: "👍" !important; }
+.fa-thumbs-down::before { content: "👎" !important; }
+.fa-lightbulb::before { content: "💡" !important; }
+.fa-search::before { content: "🔍" !important; }
+.fa-home::before { content: "🏠" !important; }
+.fa-envelope::before { content: "✉" !important; }
+.fa-phone::before { content: "📞" !important; }
+.fa-globe::before { content: "🌐" !important; }
+.fa-camera::before { content: "📷" !important; }
+.fa-image::before { content: "🖼" !important; }
+.fa-file::before { content: "📄" !important; }
+.fa-folder::before { content: "📁" !important; }
+.fa-save::before { content: "💾" !important; }
+.fa-print::before { content: "🖨" !important; }
+.fa-edit::before { content: "✏" !important; }
+.fa-delete::before { content: "🗑" !important; }
+.fa-lock::before { content: "🔒" !important; }
+.fa-unlock::before { content: "🔓" !important; }
+.fa-key::before { content: "🔑" !important; }
+.fa-calendar::before { content: "📅" !important; }
+.fa-clock::before { content: "🕐" !important; }
+.fa-bell::before { content: "🔔" !important; }
+.fa-flag::before { content: "🚩" !important; }
+.fa-tag::before { content: "🏷" !important; }
+.fa-link::before { content: "🔗" !important; }
+.fa-external-link::before { content: "↗" !important; }
+.fa-eye::before { content: "👁" !important; }
+.fa-eye-slash::before { content: "🙈" !important; }
+
+/* Programming language icons */
+.fa-html5::before { content: "<>" !important; color: #e34c26; font-family: monospace; }
+.fa-css3-alt::before { content: "{}" !important; color: #1572b6; font-family: monospace; }
+.fa-js-square::before { content: "JS" !important; color: #f7df1e; background: #000; padding: 2px; border-radius: 2px; font-size: 0.8em; }
+.fa-python::before { content: "🐍" !important; }
+.fa-java::before { content: "☕" !important; }
+.fa-database::before { content: "🗃" !important; }
+.fa-terminal::before { content: ">" !important; font-family: monospace; }
+.fa-php::before { content: "PHP" !important; color: #777bb4; font-family: monospace; font-size: 0.8em; }
+.fa-gem::before { content: "💎" !important; }
+.fa-swift::before { content: "🦉" !important; }
+
+/* Social media icons */
+.fa-twitter::before { content: "🐦" !important; }
+.fa-facebook::before { content: "📘" !important; }
+.fa-linkedin::before { content: "💼" !important; }
+.fa-github::before { content: "🐙" !important; }
+.fa-instagram::before { content: "📷" !important; }
+.fa-youtube::before { content: "📺" !important; }
+.fa-telegram::before { content: "📨" !important; }
+.fa-whatsapp::before { content: "📱" !important; }
+.fa-discord::before { content: "🎮" !important; }
+.fa-reddit::before { content: "🤖" !important; }
+
+/* Loading and status icons */
+.fa-spinner::before { 
+    content: "⟳" !important; 
+    animation: faSpinnerFallback 1s linear infinite;
+}
+
+.fa-circle-notch::before {
+    content: "◐" !important;
+    animation: faSpinnerFallback 1s linear infinite;
+}
+
+@keyframes faSpinnerFallback {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Send button specific styling when Font Awesome is not available */
+.send-button .fa-paper-plane::before,
+.send-button .fa-send::before {
+    content: "→" !important;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* Ensure fallback icons are properly sized */
+.fas::before, .far::before, .fab::before {
+    font-size: inherit;
+    line-height: inherit;
+    vertical-align: baseline;
+}
+
+/* Special styling for button icons */
+button .fas::before, 
+button .far::before, 
+button .fab::before,
+.btn .fas::before,
+.btn .far::before, 
+.btn .fab::before {
+    margin-right: 0.25em;
+}
+
+/* Header button icons */
+.header-btn .fas::before,
+.header-btn .far::before {
+    font-size: 1.1em;
+}
+
+/* Dropdown icons */
+.dropdown-item .fas::before,
+.dropdown-item .far::before {
+    margin-right: 0.5em;
+    width: 1em;
+    text-align: center;
+}
+
+/* Make sure icons in the new chat button are visible */
+.new-chat-btn .fa-plus::before {
+    margin-right: 0.5em;
+}
+
+/* User menu arrow */
+.user-menu .fa-chevron-up::before {
+    margin-left: auto;
+    font-size: 0.9em;
+}
+
+/* Message action buttons */
+.action-btn .fas::before,
+.action-btn .far::before {
+    font-size: 0.9em;
+}
+
+/* Toast icons */
+.toast-icon .fas::before {
+    font-size: 1.1em;
+}
+
+/* Settings and modal icons */
+.modal-close::before {
+    content: "×" !important;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+/* Enhanced visibility for fallback icons */
+.fas::before, .far::before, .fab::before {
+    opacity: 1;
+    color: inherit;
+    display: inline-block;
+}
+
+/* Dark theme adjustments for fallback icons */
+[data-theme="dark"] .fas::before,
+[data-theme="dark"] .far::before,
+[data-theme="dark"] .fab::before {
+    filter: brightness(1.1);
+}
+
+/* Pro theme adjustments for fallback icons */
+[data-theme="pro"] .fas::before,
+[data-theme="pro"] .far::before,
+[data-theme="pro"] .fab::before {
+    color: inherit;
+}
+
+/* Owner theme adjustments for fallback icons */
+[data-theme="owner"] .fas::before,
+[data-theme="owner"] .far::before,
+[data-theme="owner"] .fab::before {
+    filter: hue-rotate(15deg) brightness(1.1);
+}
+}
