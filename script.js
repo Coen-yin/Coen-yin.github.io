@@ -1435,7 +1435,7 @@ async function handleSignup(event) {
     
     try {
         // Create account with Appwrite v20
-        const response = await appwriteAccount.createEmailPassword(
+        const response = await appwriteAccount.createAccount(
             email,
             password,
             name
