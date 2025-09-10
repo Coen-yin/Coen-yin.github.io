@@ -26,10 +26,11 @@ const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
 let appwriteClient = null;
 let appwriteAccount = null;
 let appwriteDatabases = null;
+let appwriteID = null;
 
 // Check if Appwrite is available
 if (typeof Appwrite !== 'undefined') {
-    const { Client, Account, Databases, Storage, Teams } = Appwrite;
+    const { Client, Account, Databases, Storage, Teams, ID } = Appwrite;
     appwriteClient = new Client();
     appwriteClient
         .setEndpoint(APPWRITE_ENDPOINT)
@@ -37,6 +38,7 @@ if (typeof Appwrite !== 'undefined') {
 
     appwriteAccount = new Account(appwriteClient);
     appwriteDatabases = new Databases(appwriteClient);
+    appwriteID = ID;
 } else {
     console.warn('Appwrite SDK not loaded - authentication will be disabled');
 }
@@ -1435,7 +1437,8 @@ async function handleSignup(event) {
     
     try {
         // Create account with Appwrite v20
-        const response = await appwriteAccount.createAccount(
+        const response = await appwriteAccount.create(
+            appwriteID.unique(),
             email,
             password,
             name
@@ -1444,7 +1447,7 @@ async function handleSignup(event) {
         console.log('Account created:', response);
         
         // Create session immediately for v20
-        await appwriteAccount.createSession(email, password);
+        await appwriteAccount.createEmailPasswordSession(email, password);
         
         // Send email verification
         try {
@@ -1639,7 +1642,7 @@ async function handleLogin(event) {
     
     try {
         // Create session with Appwrite v20
-        await appwriteAccount.createSession(email, password);
+        await appwriteAccount.createEmailPasswordSession(email, password);
         
         // Get user data
         const user = await appwriteAccount.get();
