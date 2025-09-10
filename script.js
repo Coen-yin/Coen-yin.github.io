@@ -26,10 +26,11 @@ const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
 let appwriteClient = null;
 let appwriteAccount = null;
 let appwriteDatabases = null;
+let appwriteUsers = null;
 
 // Check if Appwrite is available
 if (typeof Appwrite !== 'undefined') {
-    const { Client, Account, Databases, Storage, Teams } = Appwrite;
+    const { Client, Account, Databases, Storage, Teams, Users } = Appwrite;
     appwriteClient = new Client();
     appwriteClient
         .setEndpoint(APPWRITE_ENDPOINT)
@@ -37,6 +38,17 @@ if (typeof Appwrite !== 'undefined') {
 
     appwriteAccount = new Account(appwriteClient);
     appwriteDatabases = new Databases(appwriteClient);
+    
+    // Initialize Users API with server key for admin operations
+    if (window.location.hostname === 'talkiegen.me' || window.location.hostname === 'localhost') {
+        const adminClient = new Client();
+        adminClient
+            .setEndpoint(APPWRITE_ENDPOINT)
+            .setProject(APPWRITE_PROJECT_ID)
+            .setKey('standard_19b5bb2db393e1df689b8275ea2129dadbe72f183e10739fe087c76f239a03748b1967ee7bbe6533129fe087c76f239a03748b1967ee7bbe6533125');
+        
+        appwriteUsers = new Users(adminClient);
+    }
 } else {
     console.warn('Appwrite SDK not loaded - authentication will be disabled');
 }
@@ -1334,8 +1346,17 @@ async function handleSignup(event) {
         
         console.log('Account created:', response);
         
-        // Automatically login after successful signup
+        // Automatically login after successful signup to send verification
         await appwriteAccount.createEmailSession(email, password);
+        
+        // Send verification email
+        try {
+            await appwriteAccount.createVerification(window.location.origin + "/verify.html");
+            console.log('Verification email sent');
+        } catch (verifyError) {
+            console.warn('Could not send verification email:', verifyError);
+            // Don't fail signup if verification email fails
+        }
         
         // Get user data
         const user = await appwriteAccount.get();
@@ -1371,7 +1392,7 @@ async function handleSignup(event) {
         hideAuthModal();
         updateUserInterface();
         initializeTheme();
-        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
+        showToast(`Welcome to Talkie Gen AI, ${name}! Please check your email to verify your account.`, 'success');
         
     } catch (error) {
         console.error('Signup error:', error);
@@ -4991,6 +5012,41 @@ additionalStyles.textContent = `
     .message {
         scroll-margin-bottom: 20px;
     }
+    
+    /* Email verification badges */
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .verification-badge.verified {
+        background: rgba(72, 187, 120, 0.1);
+        color: #2f855a;
+        border: 1px solid rgba(72, 187, 120, 0.2);
+    }
+    
+    .verification-badge.unverified {
+        background: rgba(245, 101, 101, 0.1);
+        color: #c53030;
+        border: 1px solid rgba(245, 101, 101, 0.2);
+    }
+    
+    [data-theme="dark"] .verification-badge.verified {
+        background: rgba(72, 187, 120, 0.2);
+        color: #68d391;
+    }
+    
+    [data-theme="dark"] .verification-badge.unverified {
+        background: rgba(245, 101, 101, 0.2);
+        color: #fc8181;
+    }
 `;
 document.head.appendChild(additionalStyles);
 
@@ -5244,17 +5300,55 @@ function addListAllUsersButton() {
 }
 
 // Function to list all users
-function listAllUsers() {
+async function listAllUsers() {
     try {
         // Force sync first
         syncExistingUserData();
         
+        // Try to get users from Appwrite if available
+        if (appwriteUsers && (currentUser?.isAdmin || currentUser?.isOwner)) {
+            try {
+                const appwriteUsersList = await appwriteUsers.list();
+                console.log('Users from Appwrite:', appwriteUsersList);
+                
+                // Update local storage with Appwrite data
+                const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+                
+                appwriteUsersList.users.forEach(user => {
+                    users[user.email] = {
+                        name: user.name,
+                        email: user.email,
+                        appwriteId: user.$id,
+                        isPro: users[user.email]?.isPro || false,
+                        isAdmin: users[user.email]?.isAdmin || user.email === 'coenyin9@gmail.com',
+                        isOwner: user.email === 'coenyin9@gmail.com',
+                        profilePhoto: users[user.email]?.profilePhoto || null,
+                        signupDate: users[user.email]?.signupDate || user.$createdAt,
+                        lastLoginDate: users[user.email]?.lastLoginDate || user.$updatedAt,
+                        emailVerification: user.emailVerification,
+                        status: user.status
+                    };
+                });
+                
+                localStorage.setItem('talkie-users', JSON.stringify(users));
+                
+                const userEmails = Object.keys(users);
+                showToast(`Found ${userEmails.length} user(s) from Appwrite. Check console for details.`, 'success');
+                
+                return users;
+            } catch (error) {
+                console.warn('Could not fetch from Appwrite Users API:', error);
+                // Fall back to local storage
+            }
+        }
+        
+        // Use local storage fallback
         const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         const userEmails = Object.keys(users);
         
         if (userEmails.length === 0) {
             showToast('No users found in the system. Users will appear after they sign up.', 'info');
-            return;
+            return {};
         }
         
         // Show all users in console and toast
@@ -5273,9 +5367,12 @@ function listAllUsers() {
             searchUser();
         }
         
+        return users;
+        
     } catch (error) {
         console.error('Error listing all users:', error);
         showToast('Error retrieving user list', 'error');
+        return {};
     }
 }
 
@@ -5374,6 +5471,27 @@ function displayUserDetails(user) {
         proElement.style.display = 'none';
     }
     
+    // Add verification status if available
+    let verificationHTML = '';
+    if (user.emailVerification !== undefined) {
+        const verificationClass = user.emailVerification ? 'verified' : 'unverified';
+        const verificationIcon = user.emailVerification ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+        const verificationText = user.emailVerification ? 'Verified' : 'Not Verified';
+        verificationHTML = `<span class="verification-badge ${verificationClass}">
+            <i class="${verificationIcon}"></i> ${verificationText}
+        </span>`;
+    }
+    
+    // Check if we have existing verification info element, if not create it
+    let verificationElement = document.getElementById('selectedUserVerification');
+    if (!verificationElement) {
+        verificationElement = document.createElement('div');
+        verificationElement.id = 'selectedUserVerification';
+        verificationElement.style.marginTop = '8px';
+        document.getElementById('selectedUserEmail').parentNode.appendChild(verificationElement);
+    }
+    verificationElement.innerHTML = verificationHTML;
+    
     // Update button states
     document.getElementById('toggleProBtn').textContent = user.isPro ? 'Remove Pro' : 'Grant Pro';
     document.getElementById('toggleAdminBtn').textContent = user.isAdmin ? 'Remove Admin' : 'Grant Admin';
@@ -5426,6 +5544,9 @@ function toggleUserPro() {
         updateUserInterface();
     }
     
+    // Try to update in Appwrite if available
+    updateUserInAppwrite(user);
+    
     displayUserDetails(user);
     showToast(`${user.isPro ? 'Granted' : 'Removed'} Pro access for ${user.name}`, 'success');
 }
@@ -5467,8 +5588,65 @@ function toggleUserAdmin() {
         updateUserInterface();
     }
     
+    // Try to update in Appwrite if available
+    updateUserInAppwrite(user);
+    
     displayUserDetails(user);
     showToast(`${user.isAdmin ? 'Granted' : 'Removed'} admin privileges for ${user.name}`, 'success');
+}
+
+// New function to update user data in Appwrite
+async function updateUserInAppwrite(userData) {
+    if (!appwriteUsers || !userData.appwriteId) {
+        return; // Appwrite not available or no user ID
+    }
+    
+    try {
+        // Update user name if changed
+        await appwriteUsers.updateName(userData.appwriteId, userData.name);
+        
+        // Update user labels for role tracking
+        const labels = [];
+        if (userData.isPro) labels.push('pro');
+        if (userData.isAdmin) labels.push('admin');
+        if (userData.isOwner) labels.push('owner');
+        
+        await appwriteUsers.updateLabels(userData.appwriteId, labels);
+        
+        console.log('Updated user in Appwrite:', userData.email);
+    } catch (error) {
+        console.warn('Could not update user in Appwrite:', error);
+    }
+}
+
+// New function to edit user name via Appwrite
+async function editUserName(userId, newName) {
+    if (!appwriteUsers) {
+        showToast('User management API not available', 'error');
+        return false;
+    }
+    
+    try {
+        await appwriteUsers.updateName(userId, newName);
+        showToast('User name updated successfully!', 'success');
+        
+        // Update local storage
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        Object.keys(users).forEach(email => {
+            if (users[email].appwriteId === userId) {
+                users[email].name = newName;
+            }
+        });
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        
+        // Refresh user list
+        await listAllUsers();
+        return true;
+    } catch (error) {
+        console.error('Error updating user name:', error);
+        showToast('Failed to update user name: ' + error.message, 'error');
+        return false;
+    }
 }
 
 function deleteUser() {
