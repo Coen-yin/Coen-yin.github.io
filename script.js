@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMemorySystem(); // Initialize enhanced memory system
     handleDocumentationRouting(); // Handle docs URL routing
     setupEventListeners();
+    setupCodeBlockEventListeners(); // Setup code block event listeners
     loadChatHistory();
     autoResizeTextarea();
     
@@ -160,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.listAllUsers = listAllUsers;
     window.syncExistingUserData = syncExistingUserData;
     console.log('🔧 Debug functions available: checkAdminSystem(), listAllUsers(), syncExistingUserData()');
+    console.log('🧪 Testing functions available: debugAISystem(), refreshCodeBlockListeners()');
 });
 
 // Appwrite authentication initialization
@@ -395,6 +397,23 @@ function buildMemoryContext(memory) {
         contextParts.push(`Recent conversation topics: ${recentTopics.join(', ')}`);
     }
     
+    // Enhanced coding context
+    if (memory.codingPreferences) {
+        const coding = memory.codingPreferences;
+        if (coding.languages && coding.languages.length > 0) {
+            contextParts.push(`Programming languages discussed: ${coding.languages.join(', ')}`);
+        }
+        if (coding.frameworks && coding.frameworks.length > 0) {
+            contextParts.push(`Frameworks/libraries discussed: ${coding.frameworks.join(', ')}`);
+        }
+        if (coding.topics && coding.topics.length > 0) {
+            contextParts.push(`Coding topics discussed: ${coding.topics.join(', ')}`);
+        }
+        if (coding.lastDiscussedLanguage) {
+            contextParts.push(`Last programming language discussed: ${coding.lastDiscussedLanguage}`);
+        }
+    }
+    
     return contextParts.length > 0 ? contextParts.join('\n') : null;
 }
 
@@ -417,6 +436,63 @@ function updateUserMemory(userMessage, aiResponse) {
     
     // Update conversation history summary
     updateConversationHistory(userMessage, aiResponse, memory);
+    
+    saveUserMemory();
+}
+
+// Enhanced memory system for code-related conversations
+function updateCodeMemory(userMessage, aiResponse) {
+    if (!conversationSettings.enableMemory || !currentUser || !userMemory[currentUser.email]) {
+        return;
+    }
+    
+    const memory = userMemory[currentUser.email];
+    
+    // Initialize coding preferences if not exists
+    if (!memory.codingPreferences) {
+        memory.codingPreferences = {
+            languages: [],
+            frameworks: [],
+            topics: [],
+            lastDiscussedLanguage: null
+        };
+    }
+    
+    // Extract programming languages mentioned
+    const languages = ['javascript', 'python', 'java', 'cpp', 'c++', 'c#', 'php', 'ruby', 'go', 'rust', 'typescript', 'html', 'css', 'sql', 'r', 'swift', 'kotlin'];
+    const frameworks = ['react', 'angular', 'vue', 'node', 'express', 'django', 'flask', 'spring', 'laravel'];
+    
+    const messageLower = userMessage.toLowerCase();
+    
+    // Track languages mentioned
+    languages.forEach(lang => {
+        if (messageLower.includes(lang) && !memory.codingPreferences.languages.includes(lang)) {
+            memory.codingPreferences.languages.push(lang);
+            memory.codingPreferences.lastDiscussedLanguage = lang;
+        }
+    });
+    
+    // Track frameworks mentioned
+    frameworks.forEach(framework => {
+        if (messageLower.includes(framework) && !memory.codingPreferences.frameworks.includes(framework)) {
+            memory.codingPreferences.frameworks.push(framework);
+        }
+    });
+    
+    // Track coding topics
+    const codingTopics = ['algorithms', 'data structures', 'api', 'database', 'frontend', 'backend', 'machine learning', 'ai', 'debugging', 'testing'];
+    codingTopics.forEach(topic => {
+        if (messageLower.includes(topic) && !memory.codingPreferences.topics.includes(topic)) {
+            memory.codingPreferences.topics.push(topic);
+        }
+    });
+    
+    // Limit arrays to prevent bloat
+    ['languages', 'frameworks', 'topics'].forEach(key => {
+        if (memory.codingPreferences[key].length > 10) {
+            memory.codingPreferences[key] = memory.codingPreferences[key].slice(-10);
+        }
+    });
     
     saveUserMemory();
 }
@@ -2070,31 +2146,40 @@ CURRENT CONTEXT:
             // Use Puter AI chat with the correct API call
             console.log('Using Puter AI for response...');
             
+            // Build context string from messages for Puter AI
+            let contextualMessage = userMessage;
+            if (messages && messages.length > 1) {
+                // Include recent conversation context
+                const recentContext = messages.slice(-5).map(msg => {
+                    if (msg.role === 'user') return `User: ${msg.content}`;
+                    if (msg.role === 'assistant') return `Assistant: ${msg.content}`;
+                    return msg.content;
+                }).join('\n');
+                contextualMessage = `Previous context:\n${recentContext}\n\nCurrent message: ${userMessage}`;
+            }
+            
             if (hasImageData && imageUrl) {
                 // Use image analysis: puter.ai.chat(question, imageUrl, options)
                 console.log('Analyzing image with Puter AI...');
                 try {
-                    aiResponse = await puter.ai.chat(userMessage, imageUrl, { 
-                        model: "gpt-5-nano",
-                        messages: messages
+                    aiResponse = await puter.ai.chat(contextualMessage, imageUrl, { 
+                        model: "gpt-5-nano"
                     });
                     console.log('Image analysis completed successfully');
                 } catch (imageError) {
                     console.error('Image analysis failed:', imageError);
                     // Fallback to text-only response with image context
                     console.log('Falling back to text response with image context...');
-                    aiResponse = await puter.ai.chat(`${userMessage} [Note: User uploaded an image but analysis failed]`, { 
-                        model: "gpt-5-nano",
-                        messages: messages
+                    aiResponse = await puter.ai.chat(`${contextualMessage} [Note: User uploaded an image but analysis failed]`, { 
+                        model: "gpt-5-nano"
                     });
                 }
                 // Clear the image data after processing (success or failure)
                 window.currentImageData = null;
             } else {
                 // Regular text chat: puter.ai.chat(message, options)
-                aiResponse = await puter.ai.chat(userMessage, { 
-                    model: "gpt-5-nano",
-                    messages: messages
+                aiResponse = await puter.ai.chat(contextualMessage, { 
+                    model: "gpt-5-nano"
                 });
             }
         }
@@ -2154,6 +2239,13 @@ CURRENT CONTEXT:
         // Update user memory with the conversation
         updateUserMemory(userMessage, aiResponse);
         
+        // Enhanced memory update for code-related conversations
+        if (userMessage.toLowerCase().includes('code') || 
+            userMessage.toLowerCase().includes('programming') ||
+            aiResponse.includes('```')) {
+            updateCodeMemory(userMessage, aiResponse);
+        }
+        
         return aiResponse;
 
     } catch (error) {
@@ -2173,6 +2265,13 @@ CURRENT CONTEXT:
             try {
                 const fallbackResponse = await getFallbackAIResponse(userMessage, contextMessages, hasImageData);
                 updateUserMemory(userMessage, fallbackResponse);
+                
+                // Enhanced memory update for code-related conversations
+                if (userMessage.toLowerCase().includes('code') || 
+                    userMessage.toLowerCase().includes('programming') ||
+                    fallbackResponse.includes('```')) {
+                    updateCodeMemory(userMessage, fallbackResponse);
+                }
                 return fallbackResponse;
             } catch (fallbackError) {
                 console.error('Fallback AI also failed:', fallbackError);
@@ -3657,37 +3756,7 @@ function getFileExtension(language) {
     return extensionMap[language] || '.txt';
 }
 
-// Event delegation for code block actions
-document.addEventListener('DOMContentLoaded', function() {
-    // Use event delegation for code block actions
-    document.addEventListener('click', function(e) {
-        const target = e.target.closest('.code-action-btn');
-        if (!target) return;
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const action = target.dataset.action;
-        const codeId = target.dataset.codeId;
-        
-        if (!codeId) {
-            console.error('Code ID not found for action:', action);
-            return;
-        }
-        
-        switch (action) {
-            case 'copy':
-                copyCodeBlock(codeId, target);
-                break;
-            case 'download':
-                downloadCodeBlock(codeId, target.dataset.extension, target.dataset.languageName);
-                break;
-            case 'fold':
-                toggleCodeFold(codeId, target);
-                break;
-        }
-    });
-});
+
 
 function copyCodeBlock(blockId, buttonElement = null) {
     const codeElement = document.getElementById(blockId);
@@ -4175,6 +4244,104 @@ function sendPrompt(prompt) {
     setTimeout(() => {
         sendMessage();
     }, 300);
+}
+
+// Enhanced debugging and system testing functions
+window.debugAISystem = function() {
+    console.log('🔧 AI System Debug Information:');
+    console.log('Puter SDK Available:', typeof puter !== 'undefined');
+    console.log('Current User:', currentUser);
+    console.log('Memory Enabled:', conversationSettings.enableMemory);
+    console.log('Current Chat ID:', currentChatId);
+    console.log('Chat Count:', Object.keys(chats).length);
+    console.log('Memory Data:', currentUser ? userMemory[currentUser.email] : null);
+    console.log('Conversation Settings:', conversationSettings);
+    
+    // Test basic functionality
+    console.log('🧪 Running basic functionality tests...');
+    
+    // Test code block creation
+    try {
+        const testCode = 'console.log("Hello World!");';
+        const codeBlock = createCodeBlock(testCode, 'javascript');
+        console.log('✅ Code block creation: PASS');
+    } catch (error) {
+        console.error('❌ Code block creation: FAIL', error);
+    }
+    
+    // Test memory functions
+    try {
+        if (currentUser) {
+            initializeMemorySystem();
+            console.log('✅ Memory system: PASS');
+        } else {
+            console.log('⚠️ Memory system: SKIPPED (no user)');
+        }
+    } catch (error) {
+        console.error('❌ Memory system: FAIL', error);
+    }
+    
+    return {
+        puterAvailable: typeof puter !== 'undefined',
+        userLoggedIn: !!currentUser,
+        memoryEnabled: conversationSettings.enableMemory,
+        chatCount: Object.keys(chats).length
+    };
+};
+
+// Force refresh code block event listeners
+window.refreshCodeBlockListeners = function() {
+    console.log('🔄 Refreshing code block event listeners...');
+    
+    // Remove existing listeners and re-add them
+    const codeButtons = document.querySelectorAll('.code-action-btn');
+    codeButtons.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+    });
+    
+    // Re-setup event delegation (it should already exist, but ensure it's working)
+    setupCodeBlockEventListeners();
+    
+    console.log('✅ Code block listeners refreshed');
+};
+
+// Setup code block event listeners (separate function for clarity)
+function setupCodeBlockEventListeners() {
+    // Use event delegation for dynamically created code blocks
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('.code-action-btn');
+        if (!target) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const action = target.dataset.action;
+        const codeId = target.dataset.codeId;
+        
+        if (!codeId) {
+            console.error('Code ID not found for action:', action);
+            showToast('Error: Code block ID not found', 'error');
+            return;
+        }
+        
+        console.log(`Executing code action: ${action} for block: ${codeId}`);
+        
+        switch (action) {
+            case 'copy':
+                copyCodeBlock(codeId, target);
+                break;
+            case 'download':
+                downloadCodeBlock(codeId, target.dataset.extension, target.dataset.languageName);
+                break;
+            case 'fold':
+                toggleCodeFold(codeId, target);
+                break;
+            default:
+                console.warn('Unknown code action:', action);
+                showToast('Unknown action: ' + action, 'warning');
+        }
+    });
 }
 
 // Test Image Analysis Function (for debugging)
