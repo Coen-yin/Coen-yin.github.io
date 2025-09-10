@@ -3693,3 +3693,539 @@ textarea:focus-visible {
     color: white;
     border-color: transparent;
 }
+
+/* ===== Enhanced Admin Panel Styles ===== */
+
+/* Admin Tabs */
+.admin-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+}
+
+.admin-tab {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.admin-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.admin-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.admin-tab-content {
+    display: none;
+}
+
+.admin-tab-content.active {
+    display: block;
+}
+
+/* Users Table */
+.users-table-container {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-light);
+}
+
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.table-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.table-filters select,
+.table-filters input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    min-width: 120px;
+}
+
+.table-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
+}
+
+.admin-btn.primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.admin-btn.primary:hover {
+    background: var(--primary-dark);
+}
+
+.admin-btn.secondary {
+    background: var(--bg-tertiary);
+}
+
+.admin-btn.danger {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.admin-btn.danger:hover {
+    background: #d32f2f;
+}
+
+.admin-btn.small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.users-table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+}
+
+.users-table th,
+.users-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 14px;
+}
+
+.users-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.users-table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.users-table .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.users-table .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.users-table .user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.users-table .user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.users-table .user-email {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.table-role-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+}
+
+.table-role-badge.owner {
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+    color: white;
+    border: none;
+}
+
+.table-role-badge.admin {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+}
+
+.table-role-badge.pro {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    border: none;
+}
+
+.table-status-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.table-status-badge.active {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.table-status-badge.inactive {
+    background: rgba(245, 101, 101, 0.1);
+    color: #f56565;
+    border: 1px solid rgba(245, 101, 101, 0.3);
+}
+
+.table-actions-cell {
+    display: flex;
+    gap: 6px;
+}
+
+.table-action-btn {
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+}
+
+.table-action-btn:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.table-action-btn.danger:hover {
+    background: var(--danger);
+}
+
+/* Create User Form */
+.create-user-form {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border-light);
+}
+
+.create-user-form h4 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+/* Bulk Actions */
+.bulk-actions-panel {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border-light);
+}
+
+.bulk-actions-panel h4 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.selected-users-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+}
+
+.bulk-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.bulk-actions-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 8px;
+    color: #ff9800;
+    font-size: 14px;
+}
+
+/* Enhanced User Details */
+.user-meta {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.meta-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.meta-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Pagination */
+.table-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 16px 0;
+}
+
+.pagination-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.pagination-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
+}
+
+.pagination-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive design for admin panel */
+@media (max-width: 768px) {
+    .admin-tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .admin-tab {
+        justify-content: flex-start;
+    }
+    
+    .table-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .table-filters {
+        flex-direction: column;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .bulk-action-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .users-table-wrapper {
+        font-size: 12px;
+    }
+    
+    .users-table th,
+    .users-table td {
+        padding: 8px;
+    }
+}
+
+/* Dark theme adjustments for admin panel */
+[data-theme="dark"] .admin-tabs {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .admin-tab.active {
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* Pro theme adjustments for admin panel */
+[data-theme="pro"] .admin-tab.active {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+[data-theme="pro"] .admin-btn.primary {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    border-color: #ffd700;
+}
+
+[data-theme="pro"] .table-role-badge.pro {
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Owner theme adjustments for admin panel */
+[data-theme="owner"] .admin-tab.active {
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+}
+
+[data-theme="owner"] .admin-btn.primary {
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+    color: white;
+    border: none;
+}
+
+[data-theme="owner"] .table-role-badge.owner {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}

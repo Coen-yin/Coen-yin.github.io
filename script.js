@@ -5126,6 +5126,12 @@ function showAdminPanel() {
     // Load and display statistics
     loadAdminStats();
     
+    // Initialize the enhanced user management
+    setupAdminUserManagement();
+    
+    // Load users table by default
+    loadUsersTable();
+    
     // Also refresh user count to ensure it's accurate
     setTimeout(() => {
         loadAdminStats();
@@ -5181,6 +5187,23 @@ function setupAdminUserManagement() {
     const toggleProBtn = document.getElementById('toggleProBtn');
     const toggleAdminBtn = document.getElementById('toggleAdminBtn');
     const deleteUserBtn = document.getElementById('deleteUserBtn');
+    const editUserBtn = document.getElementById('editUserBtn');
+    const toggleUserStatusBtn = document.getElementById('toggleUserStatusBtn');
+    
+    // Setup tab navigation
+    setupAdminTabs();
+    
+    // Setup table functionality
+    setupUsersTable();
+    
+    // Setup create user form
+    setupCreateUserForm();
+    
+    // Setup bulk actions
+    setupBulkActions();
+    
+    // Setup user edit modal
+    setupUserEditModal();
     
     if (searchUserBtn) {
         searchUserBtn.addEventListener('click', searchUser);
@@ -5209,8 +5232,725 @@ function setupAdminUserManagement() {
         deleteUserBtn.addEventListener('click', deleteUser);
     }
     
+    if (editUserBtn) {
+        editUserBtn.addEventListener('click', () => showUserEditModal(selectedUserEmail));
+    }
+    
+    if (toggleUserStatusBtn) {
+        toggleUserStatusBtn.addEventListener('click', toggleUserStatus);
+    }
+    
     // Add a "List All Users" button functionality
     addListAllUsersButton();
+}
+
+// Setup admin tabs
+function setupAdminTabs() {
+    const tabs = document.querySelectorAll('.admin-tab');
+    const tabContents = document.querySelectorAll('.admin-tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+            
+            // Load content based on tab
+            if (targetTab === 'users-list') {
+                loadUsersTable();
+            }
+        });
+    });
+}
+
+// Setup users table
+function setupUsersTable() {
+    const refreshBtn = document.getElementById('refreshUsersBtn');
+    const exportBtn = document.getElementById('exportUsersBtn');
+    const roleFilter = document.getElementById('userRoleFilter');
+    const searchInput = document.getElementById('userTableSearch');
+    const selectAllCheckbox = document.getElementById('selectAllUsers');
+    
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadUsersTable);
+    }
+    
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportUsersData);
+    }
+    
+    if (roleFilter) {
+        roleFilter.addEventListener('change', filterUsersTable);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterUsersTable);
+    }
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', toggleSelectAllUsers);
+    }
+}
+
+// Load users table
+function loadUsersTable() {
+    syncExistingUserData();
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const tbody = document.getElementById('usersTableBody');
+    
+    if (!tbody) return;
+    
+    const userEntries = Object.entries(users);
+    
+    if (userEntries.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <div>No users found in the system</div>
+                    <div style="font-size: 14px; margin-top: 8px;">Users will appear here after they sign up</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = userEntries.map(([email, user]) => {
+        const joinDate = user.signupDate ? new Date(user.signupDate).toLocaleDateString() : 'Unknown';
+        const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate).toLocaleDateString() : 'Never';
+        const isActive = user.isActive !== false; // Default to true if not set
+        
+        let roleClass = 'regular';
+        let roleText = 'Regular';
+        if (user.isOwner) {
+            roleClass = 'owner';
+            roleText = 'Owner';
+        } else if (user.isAdmin) {
+            roleClass = 'admin';
+            roleText = 'Admin';
+        } else if (user.isPro) {
+            roleClass = 'pro';
+            roleText = 'Pro';
+        }
+        
+        return `
+            <tr data-user-email="${email}">
+                <td>
+                    <input type="checkbox" class="user-select-checkbox" value="${email}" />
+                </td>
+                <td>
+                    <div class="user-info">
+                        <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
+                        <div class="user-details">
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-email">${email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${email}</td>
+                <td>
+                    <span class="table-role-badge ${roleClass}">${roleText}</span>
+                </td>
+                <td>
+                    <span class="table-status-badge ${isActive ? 'active' : 'inactive'}">
+                        ${isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${joinDate}</td>
+                <td>${lastLogin}</td>
+                <td>
+                    <div class="table-actions-cell">
+                        <button class="table-action-btn" onclick="editUserFromTable('${email}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="table-action-btn" onclick="toggleUserProFromTable('${email}')" title="Toggle Pro">
+                            <i class="fas fa-crown"></i>
+                        </button>
+                        ${!user.isOwner ? `
+                            <button class="table-action-btn danger" onclick="deleteUserFromTable('${email}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Setup row click handlers
+    setupTableRowHandlers();
+    updateSelectedUsersCount();
+}
+
+// Setup table row handlers
+function setupTableRowHandlers() {
+    const checkboxes = document.querySelectorAll('.user-select-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedUsersCount);
+    });
+}
+
+// Filter users table
+function filterUsersTable() {
+    const roleFilter = document.getElementById('userRoleFilter')?.value.toLowerCase() || '';
+    const searchFilter = document.getElementById('userTableSearch')?.value.toLowerCase() || '';
+    const rows = document.querySelectorAll('#usersTableBody tr');
+    
+    rows.forEach(row => {
+        const email = row.getAttribute('data-user-email');
+        if (!email) return; // Skip empty state row
+        
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const user = users[email];
+        if (!user) return;
+        
+        let userRole = 'regular';
+        if (user.isOwner) userRole = 'owner';
+        else if (user.isAdmin) userRole = 'admin';
+        else if (user.isPro) userRole = 'pro';
+        
+        const matchesRole = !roleFilter || userRole === roleFilter;
+        const matchesSearch = !searchFilter || 
+            user.name.toLowerCase().includes(searchFilter) ||
+            email.toLowerCase().includes(searchFilter);
+        
+        row.style.display = (matchesRole && matchesSearch) ? '' : 'none';
+    });
+}
+
+// Toggle select all users
+function toggleSelectAllUsers() {
+    const selectAll = document.getElementById('selectAllUsers');
+    const checkboxes = document.querySelectorAll('.user-select-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        if (row.style.display !== 'none') { // Only select visible rows
+            checkbox.checked = selectAll.checked;
+        }
+    });
+    
+    updateSelectedUsersCount();
+}
+
+// Update selected users count
+function updateSelectedUsersCount() {
+    const selectedCheckboxes = document.querySelectorAll('.user-select-checkbox:checked');
+    const countElement = document.getElementById('selectedUsersCount');
+    
+    if (countElement) {
+        const count = selectedCheckboxes.length;
+        countElement.textContent = `${count} user${count !== 1 ? 's' : ''} selected`;
+    }
+}
+
+// Table action functions
+window.editUserFromTable = function(email) {
+    showUserEditModal(email);
+};
+
+window.toggleUserProFromTable = function(email) {
+    selectedUserEmail = email;
+    toggleUserPro();
+    setTimeout(loadUsersTable, 100); // Refresh table
+};
+
+window.deleteUserFromTable = function(email) {
+    if (confirm(`Are you sure you want to delete the user ${email}?`)) {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        delete users[email];
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        loadUsersTable();
+        showToast('User deleted successfully', 'success');
+    }
+};
+
+// Setup create user form
+function setupCreateUserForm() {
+    const form = document.getElementById('adminCreateUserForm');
+    const resetBtn = document.getElementById('resetCreateUserForm');
+    
+    if (form) {
+        form.addEventListener('submit', handleCreateUser);
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetCreateUserForm);
+    }
+}
+
+// Handle create user
+async function handleCreateUser(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    const sendWelcome = document.getElementById('newUserSendWelcome').checked;
+    
+    // Validation
+    if (!name || !email || !password) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    // Check if user already exists
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    if (users[email]) {
+        showToast('A user with this email already exists', 'error');
+        return;
+    }
+    
+    try {
+        // Create user object
+        const newUser = {
+            name: name,
+            email: email,
+            appwriteId: 'admin_created_' + Date.now(),
+            isPro: role === 'pro' || role === 'admin',
+            isAdmin: role === 'admin',
+            isOwner: false,
+            isActive: true,
+            profilePhoto: null,
+            signupDate: new Date().toISOString(),
+            lastLoginDate: null,
+            createdBy: currentUser?.email || 'admin',
+            adminNotes: `Created by admin on ${new Date().toLocaleDateString()}`
+        };
+        
+        // Store user in admin system
+        users[email] = newUser;
+        localStorage.setItem('talkie-users', JSON.stringify(users));
+        
+        // If using Appwrite, attempt to create the account there too
+        if (appwriteAccount) {
+            try {
+                await appwriteAccount.create('unique()', email, password, name);
+                console.log('User also created in Appwrite');
+            } catch (appwriteError) {
+                console.warn('Failed to create user in Appwrite:', appwriteError);
+                // Continue anyway - user is created in local system
+            }
+        }
+        
+        // Reset form
+        resetCreateUserForm();
+        
+        // Refresh users table if it's visible
+        if (document.getElementById('users-list').classList.contains('active')) {
+            loadUsersTable();
+        }
+        
+        // Show success message
+        showToast(`User ${name} created successfully!`, 'success');
+        
+        if (sendWelcome) {
+            showToast('Welcome notification would be sent in a real system', 'info');
+        }
+        
+    } catch (error) {
+        console.error('Error creating user:', error);
+        showToast('Failed to create user. Please try again.', 'error');
+    }
+}
+
+// Reset create user form
+function resetCreateUserForm() {
+    const form = document.getElementById('adminCreateUserForm');
+    if (form) {
+        form.reset();
+        document.getElementById('newUserRole').value = 'regular';
+        document.getElementById('newUserSendWelcome').checked = true;
+    }
+}
+
+// Setup bulk actions
+function setupBulkActions() {
+    const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+    const bulkToggleProBtn = document.getElementById('bulkToggleProBtn');
+    const bulkToggleAdminBtn = document.getElementById('bulkToggleAdminBtn');
+    const bulkToggleStatusBtn = document.getElementById('bulkToggleStatusBtn');
+    const bulkExportBtn = document.getElementById('bulkExportBtn');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', clearUserSelection);
+    }
+    
+    if (bulkToggleProBtn) {
+        bulkToggleProBtn.addEventListener('click', () => bulkUpdateUsers('togglePro'));
+    }
+    
+    if (bulkToggleAdminBtn) {
+        bulkToggleAdminBtn.addEventListener('click', () => bulkUpdateUsers('toggleAdmin'));
+    }
+    
+    if (bulkToggleStatusBtn) {
+        bulkToggleStatusBtn.addEventListener('click', () => bulkUpdateUsers('toggleStatus'));
+    }
+    
+    if (bulkExportBtn) {
+        bulkExportBtn.addEventListener('click', bulkExportUsers);
+    }
+    
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', bulkDeleteUsers);
+    }
+}
+
+// Clear user selection
+function clearUserSelection() {
+    const checkboxes = document.querySelectorAll('.user-select-checkbox');
+    const selectAll = document.getElementById('selectAllUsers');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    if (selectAll) {
+        selectAll.checked = false;
+    }
+    
+    updateSelectedUsersCount();
+}
+
+// Get selected user emails
+function getSelectedUserEmails() {
+    const selectedCheckboxes = document.querySelectorAll('.user-select-checkbox:checked');
+    return Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+}
+
+// Bulk update users
+function bulkUpdateUsers(action) {
+    const selectedEmails = getSelectedUserEmails();
+    
+    if (selectedEmails.length === 0) {
+        showToast('Please select users to update', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${action} for ${selectedEmails.length} user(s)?`)) {
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    let updatedCount = 0;
+    
+    selectedEmails.forEach(email => {
+        const user = users[email];
+        if (!user || user.isOwner) return; // Skip owner
+        
+        switch (action) {
+            case 'togglePro':
+                user.isPro = !user.isPro;
+                updatedCount++;
+                break;
+            case 'toggleAdmin':
+                if (currentUser?.isOwner) { // Only owner can change admin status
+                    user.isAdmin = !user.isAdmin;
+                    if (user.isAdmin && !user.isPro) {
+                        user.isPro = true; // Grant Pro when making admin
+                    }
+                    updatedCount++;
+                }
+                break;
+            case 'toggleStatus':
+                user.isActive = user.isActive === false; // Toggle active status
+                updatedCount++;
+                break;
+        }
+    });
+    
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    loadUsersTable();
+    clearUserSelection();
+    
+    showToast(`Updated ${updatedCount} user(s) successfully`, 'success');
+}
+
+// Bulk export users
+function bulkExportUsers() {
+    const selectedEmails = getSelectedUserEmails();
+    
+    if (selectedEmails.length === 0) {
+        showToast('Please select users to export', 'warning');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const selectedUsers = {};
+    
+    selectedEmails.forEach(email => {
+        if (users[email]) {
+            selectedUsers[email] = users[email];
+        }
+    });
+    
+    const data = {
+        users: selectedUsers,
+        exportDate: new Date().toISOString(),
+        exportedBy: currentUser?.email || 'admin',
+        count: Object.keys(selectedUsers).length
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `selected-users-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(`Exported ${Object.keys(selectedUsers).length} user(s)`, 'success');
+}
+
+// Bulk delete users
+function bulkDeleteUsers() {
+    const selectedEmails = getSelectedUserEmails();
+    
+    if (selectedEmails.length === 0) {
+        showToast('Please select users to delete', 'warning');
+        return;
+    }
+    
+    // Filter out owner and current user
+    const deletableEmails = selectedEmails.filter(email => {
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const user = users[email];
+        return user && !user.isOwner && email !== currentUser?.email;
+    });
+    
+    if (deletableEmails.length === 0) {
+        showToast('No users can be deleted (owner and current user cannot be deleted)', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to DELETE ${deletableEmails.length} user(s)? This action cannot be undone.`)) {
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    
+    deletableEmails.forEach(email => {
+        delete users[email];
+    });
+    
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    loadUsersTable();
+    clearUserSelection();
+    
+    showToast(`Deleted ${deletableEmails.length} user(s)`, 'success');
+}
+
+// Export all users data
+function exportUsersData() {
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
+    
+    const data = {
+        users: users,
+        statistics: stats,
+        exportDate: new Date().toISOString(),
+        exportedBy: currentUser?.email || 'admin',
+        totalUsers: Object.keys(users).length
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `all-users-data-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('Users data exported successfully!', 'success');
+}
+
+// Setup user edit modal
+function setupUserEditModal() {
+    const modal = document.getElementById('userEditModalOverlay');
+    const closeBtn = document.getElementById('closeUserEditModal');
+    const cancelBtn = document.getElementById('cancelUserEdit');
+    const form = document.getElementById('userEditForm');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideUserEditModal);
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', hideUserEditModal);
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideUserEditModal();
+            }
+        });
+    }
+    
+    if (form) {
+        form.addEventListener('submit', handleUserEditSubmit);
+    }
+}
+
+// Show user edit modal
+function showUserEditModal(email) {
+    if (!email) return;
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[email];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    // Populate form with user data
+    document.getElementById('editUserName').value = user.name || '';
+    document.getElementById('editUserEmail').value = email;
+    document.getElementById('editUserBio').value = user.bio || '';
+    document.getElementById('editUserLocation').value = user.location || '';
+    document.getElementById('editUserTimezone').value = user.timezone || '';
+    document.getElementById('editUserIsActive').checked = user.isActive !== false;
+    document.getElementById('editUserIsPro').checked = user.isPro || false;
+    document.getElementById('editUserIsAdmin').checked = user.isAdmin || false;
+    document.getElementById('editUserNotes').value = user.adminNotes || '';
+    
+    // Disable admin toggle for owner
+    const adminToggle = document.getElementById('editUserIsAdmin');
+    if (user.isOwner) {
+        adminToggle.disabled = true;
+        adminToggle.parentElement.querySelector('small').textContent = 'Owner privileges cannot be changed';
+    } else {
+        adminToggle.disabled = false;
+        adminToggle.parentElement.querySelector('small').textContent = 'Administrators can manage users and access admin panel';
+    }
+    
+    // Store current email for form submission
+    window.currentEditUserEmail = email;
+    
+    // Show modal
+    document.getElementById('userEditModalOverlay').classList.add('active');
+    document.getElementById('userEditModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// Hide user edit modal
+function hideUserEditModal() {
+    document.getElementById('userEditModalOverlay').classList.remove('active');
+    document.getElementById('userEditModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+    
+    // Clear stored email
+    window.currentEditUserEmail = null;
+}
+
+// Handle user edit form submission
+function handleUserEditSubmit(event) {
+    event.preventDefault();
+    
+    const email = window.currentEditUserEmail;
+    if (!email) return;
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[email];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    // Update user data
+    user.name = document.getElementById('editUserName').value.trim();
+    user.bio = document.getElementById('editUserBio').value.trim();
+    user.location = document.getElementById('editUserLocation').value.trim();
+    user.timezone = document.getElementById('editUserTimezone').value;
+    user.isActive = document.getElementById('editUserIsActive').checked;
+    user.isPro = document.getElementById('editUserIsPro').checked;
+    user.adminNotes = document.getElementById('editUserNotes').value.trim();
+    
+    // Only allow admin changes for non-owner users and only by owner
+    if (!user.isOwner && currentUser?.isOwner) {
+        user.isAdmin = document.getElementById('editUserIsAdmin').checked;
+        // Grant Pro when making admin
+        if (user.isAdmin && !user.isPro) {
+            user.isPro = true;
+        }
+    }
+    
+    // Update modification tracking
+    user.lastModified = new Date().toISOString();
+    user.lastModifiedBy = currentUser?.email || 'admin';
+    
+    // Save changes
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    // Update current user if editing self
+    if (email === currentUser?.email) {
+        currentUser.name = user.name;
+        currentUser.isPro = user.isPro;
+        currentUser.isAdmin = user.isAdmin;
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+        updateUserInterface();
+    }
+    
+    // Refresh displays
+    if (document.getElementById('users-list').classList.contains('active')) {
+        loadUsersTable();
+    }
+    
+    if (selectedUserEmail === email) {
+        searchUser(); // Refresh selected user details
+    }
+    
+    hideUserEditModal();
+    showToast('User updated successfully!', 'success');
+}
+
+// Toggle user status (active/inactive)
+function toggleUserStatus() {
+    if (!selectedUserEmail) return;
+    
+    if (!currentUser?.isOwner && !currentUser?.isAdmin) {
+        showToast('You do not have permission to modify user status', 'error');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+    const user = users[selectedUserEmail];
+    
+    if (!user) {
+        showToast('User not found', 'error');
+        return;
+    }
+    
+    if (user.isOwner) {
+        showToast('Cannot modify owner account status', 'error');
+        return;
+    }
+    
+    user.isActive = user.isActive === false; // Toggle active status (default true)
+    localStorage.setItem('talkie-users', JSON.stringify(users));
+    
+    displayUserDetails(user);
+    showToast(`User ${user.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
 }
 
 // Add functionality to list all users for easier management
@@ -5374,9 +6114,38 @@ function displayUserDetails(user) {
         proElement.style.display = 'none';
     }
     
+    // Update meta information
+    const joinedElement = document.getElementById('selectedUserJoined');
+    const lastLoginElement = document.getElementById('selectedUserLastLogin');
+    const statusElement = document.getElementById('selectedUserStatus');
+    
+    if (joinedElement) {
+        joinedElement.textContent = user.signupDate ? 
+            new Date(user.signupDate).toLocaleDateString() : 'Unknown';
+    }
+    
+    if (lastLoginElement) {
+        lastLoginElement.textContent = user.lastLoginDate ? 
+            new Date(user.lastLoginDate).toLocaleDateString() : 'Never';
+    }
+    
+    if (statusElement) {
+        const isActive = user.isActive !== false; // Default to true if not set
+        statusElement.textContent = isActive ? 'Active' : 'Inactive';
+        statusElement.style.color = isActive ? '#4caf50' : '#f56565';
+    }
+    
     // Update button states
     document.getElementById('toggleProBtn').textContent = user.isPro ? 'Remove Pro' : 'Grant Pro';
     document.getElementById('toggleAdminBtn').textContent = user.isAdmin ? 'Remove Admin' : 'Grant Admin';
+    
+    // Update status toggle button
+    const statusToggleBtn = document.getElementById('toggleUserStatusBtn');
+    if (statusToggleBtn) {
+        const isActive = user.isActive !== false;
+        statusToggleBtn.textContent = isActive ? 'Deactivate' : 'Activate';
+        statusToggleBtn.innerHTML = `<i class="fas fa-${isActive ? 'ban' : 'check'}"></i> ${isActive ? 'Deactivate' : 'Activate'}`;
+    }
     
     // Disable admin toggle for owner
     const adminBtn = document.getElementById('toggleAdminBtn');
@@ -5395,6 +6164,14 @@ function displayUserDetails(user) {
     } else {
         deleteBtn.disabled = false;
         deleteBtn.textContent = 'Delete User';
+    }
+    
+    // Disable status toggle for owner
+    if (statusToggleBtn && user.isOwner) {
+        statusToggleBtn.disabled = true;
+        statusToggleBtn.textContent = 'Owner (Cannot Change)';
+    } else if (statusToggleBtn) {
+        statusToggleBtn.disabled = false;
     }
     
     document.getElementById('userDetails').style.display = 'block';
