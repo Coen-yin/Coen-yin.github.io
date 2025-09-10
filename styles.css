@@ -3513,6 +3513,33 @@ textarea:focus-visible {
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
 
+/* Email Verification Badge */
+.verify-badge {
+    background: linear-gradient(135deg, #ed8936 0%, #f56565 100%);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 600;
+    margin-left: 4px;
+    box-shadow: 0 2px 4px rgba(237, 137, 54, 0.3);
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
 /* Image Generation Styles */
 .generated-image-container {
     background: var(--bg-secondary);

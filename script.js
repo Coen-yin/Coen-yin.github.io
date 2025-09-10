@@ -182,7 +182,8 @@ async function initializeAppwrite() {
                 isPro: false,
                 isAdmin: false,
                 isOwner: session.email === 'coenyin9@gmail.com',
-                profilePhoto: session.prefs?.profilePhoto || null
+                profilePhoto: session.prefs?.profilePhoto || null,
+                emailVerified: session.emailVerification || false
             };
             
             // Set admin/owner status for the owner account
@@ -1179,6 +1180,11 @@ function updateUserInterface() {
         let displayName = currentUser.name;
         let roleText = 'Online';
         
+        // Add verification status to role text
+        if (currentUser.emailVerified === false) {
+            roleText = 'Email not verified';
+        }
+        
         if (currentUser.isOwner) {
             displayName += ' <span class="owner-badge">Owner</span>';
             roleText = 'Owner';
@@ -1188,6 +1194,11 @@ function updateUserInterface() {
         } else if (currentUser.isPro) {
             displayName += ' <span class="pro-badge-enhanced">Pro</span>';
             roleText = 'Pro User';
+        }
+        
+        // Add email verification indicator for non-verified users
+        if (currentUser.emailVerified === false && !currentUser.isOwner) {
+            displayName += ' <span class="verify-badge" title="Email not verified">⚠️</span>';
         }
         
         displayUsername.innerHTML = displayName;
@@ -1214,6 +1225,10 @@ function updateUserInterface() {
         logoutBtn.style.display = 'flex';
         loginBtn.style.display = 'none';
         signupBtn.style.display = 'none';
+        
+        // Add resend verification button if needed
+        addResendVerificationButton();
+        
     } else {
         // User is not logged in
         displayUsername.textContent = 'Guest';
@@ -1229,6 +1244,55 @@ function updateUserInterface() {
         logoutBtn.style.display = 'none';
         loginBtn.style.display = 'flex';
         signupBtn.style.display = 'flex';
+        
+        // Remove verification button if exists
+        removeResendVerificationButton();
+    }
+}
+
+// Helper functions for email verification UI
+function addResendVerificationButton() {
+    // Only show for unverified users (but not owner since owner is auto-verified)
+    if (!currentUser || currentUser.emailVerified !== false || currentUser.isOwner) {
+        return;
+    }
+    
+    // Check if button already exists
+    if (document.getElementById('resendVerifyBtn')) {
+        return;
+    }
+    
+    // Create resend verification button
+    const resendBtn = document.createElement('button');
+    resendBtn.id = 'resendVerifyBtn';
+    resendBtn.className = 'dropdown-item';
+    resendBtn.innerHTML = `
+        <i class="fas fa-envelope"></i>
+        <span>Verify Email</span>
+    `;
+    
+    // Add click handler
+    resendBtn.addEventListener('click', async () => {
+        try {
+            await appwriteAccount.createVerification(window.location.origin + '/verify.html');
+            showToast('Verification email sent! Please check your inbox.', 'success');
+        } catch (error) {
+            console.error('Failed to send verification email:', error);
+            showToast('Failed to send verification email. Please try again.', 'error');
+        }
+    });
+    
+    // Insert before logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn && logoutBtn.parentNode) {
+        logoutBtn.parentNode.insertBefore(resendBtn, logoutBtn);
+    }
+}
+
+function removeResendVerificationButton() {
+    const resendBtn = document.getElementById('resendVerifyBtn');
+    if (resendBtn) {
+        resendBtn.remove();
     }
 }
 
@@ -1334,44 +1398,57 @@ async function handleSignup(event) {
         
         console.log('Account created:', response);
         
-        // Automatically login after successful signup
-        await appwriteAccount.createEmailSession(email, password);
-        
-        // Get user data
-        const user = await appwriteAccount.get();
-        
-        // Set up user object
-        currentUser = {
-            name: user.name,
-            email: user.email,
-            appwriteId: user.$id,
-            isPro: false,
-            isAdmin: false,
-            isOwner: email === 'coenyin9@gmail.com',
-            profilePhoto: null
-        };
-        
-        // Set admin/owner status for the owner account
-        if (currentUser.isOwner) {
-            currentUser.isAdmin = true;
-            currentUser.isPro = true;
+        // Send email verification
+        try {
+            await appwriteAccount.createVerification(window.location.origin + '/verify.html');
+            console.log('Verification email sent');
+            
+            hideAuthModal();
+            showToast(`Account created! Please check your email (${email}) to verify your account before signing in.`, 'info', 8000);
+            
+        } catch (verificationError) {
+            console.error('Failed to send verification email:', verificationError);
+            
+            // Still allow login even if verification email fails
+            await appwriteAccount.createEmailSession(email, password);
+            
+            // Get user data
+            const user = await appwriteAccount.get();
+            
+            // Set up user object
+            currentUser = {
+                name: user.name,
+                email: user.email,
+                appwriteId: user.$id,
+                isPro: false,
+                isAdmin: false,
+                isOwner: email === 'coenyin9@gmail.com',
+                profilePhoto: null,
+                emailVerified: user.emailVerification || false
+            };
+            
+            // Set admin/owner status for the owner account
+            if (currentUser.isOwner) {
+                currentUser.isAdmin = true;
+                currentUser.isPro = true;
+            }
+            
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            
+            // Store user in admin user management system
+            storeUserInAdminSystem(currentUser);
+            
+            // Check for pending pro upgrade
+            if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+                sessionStorage.removeItem('pendingProUpgrade');
+                upgradeToPro();
+            }
+            
+            hideAuthModal();
+            updateUserInterface();
+            initializeTheme();
+            showToast(`Welcome to Talkie Gen AI, ${name}! Note: Email verification failed to send, but you can use the app normally.`, 'warning');
         }
-        
-        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
-        
-        // Store user in admin user management system
-        storeUserInAdminSystem(currentUser);
-        
-        // Check for pending pro upgrade
-        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
-            sessionStorage.removeItem('pendingProUpgrade');
-            upgradeToPro();
-        }
-        
-        hideAuthModal();
-        updateUserInterface();
-        initializeTheme();
-        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
         
     } catch (error) {
         console.error('Signup error:', error);
@@ -1488,7 +1565,8 @@ async function handleLogin(event) {
             isPro: false,
             isAdmin: false,
             isOwner: email === 'coenyin9@gmail.com',
-            profilePhoto: user.prefs?.profilePhoto || null
+            profilePhoto: user.prefs?.profilePhoto || null,
+            emailVerified: user.emailVerification || false
         };
         
         // Set admin/owner status for the owner account
@@ -1511,7 +1589,13 @@ async function handleLogin(event) {
         hideAuthModal();
         updateUserInterface();
         initializeTheme(); // Refresh theme options for potential Pro user
-        showToast(`Welcome back, ${user.name}!`, 'success');
+        
+        // Check email verification status and show appropriate message
+        if (currentUser.emailVerified) {
+            showToast(`Welcome back, ${user.name}!`, 'success');
+        } else {
+            showToast(`Welcome back, ${user.name}! Please verify your email address for full access.`, 'warning', 6000);
+        }
         
     } catch (error) {
         console.error('Login error:', error);
@@ -4638,7 +4722,7 @@ function handleVoiceInput() {
 }
 
 // Toast System - For important messages
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 4000) {
     if (type === 'error' || type === 'success' || type === 'warning') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
@@ -4664,7 +4748,7 @@ function showToast(message, type = 'info') {
                     toast.parentNode.removeChild(toast);
                 }
             }, 300);
-        }, 4000);
+        }, duration);
     }
 }
 
