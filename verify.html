@@ -209,6 +209,11 @@
                 `;
                 actionsEl.style.display = "flex";
                 
+                // Redirect to main app with success parameter after 3 seconds
+                setTimeout(() => {
+                    window.location.href = 'index.html?verified=true';
+                }, 3000);
+                
             } catch (err) {
                 console.error('Verification error:', err);
                 
@@ -230,6 +235,11 @@
                     iconEl.innerHTML = '<i class="fas fa-check-circle"></i>';
                     titleEl.textContent = "Already Verified";
                     errorMessage = "✅ This email address has already been verified. You can proceed to use the app.";
+                    
+                    // Redirect to main app after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'index.html?verified=true';
+                    }, 3000);
                 }
                 
                 messageEl.innerHTML = `<p>${errorMessage}</p>`;

@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeAdmin(); // Initialize admin system
     trackVisitor(); // Track visitor statistics
     checkProUpgrade(); // Check for pro upgrade URL
+    checkVerificationStatus(); // Check for verification status URL
     initializeMemorySystem(); // Initialize enhanced memory system
     handleDocumentationRouting(); // Handle docs URL routing
     setupEventListeners();
@@ -1073,6 +1074,43 @@ function checkProUpgrade() {
             sessionStorage.setItem('pendingProUpgrade', 'true');
             showToast('Please sign in to activate your Pro upgrade!', 'info');
         }
+        
+        // Clean URL without reloading page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
+// Check for verification status URL parameter  
+function checkVerificationStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verifiedParam = urlParams.get('verified');
+    const errorParam = urlParams.get('verificationError');
+    
+    if (verifiedParam === 'true') {
+        // User just completed email verification
+        showToast('🎉 Email verification successful! Welcome to Talkie Gen AI!', 'success', 6000);
+        
+        // Clean URL without reloading page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Refresh user data if logged in to update verification status
+        if (currentUser && appwriteAccount) {
+            setTimeout(async () => {
+                try {
+                    const user = await appwriteAccount.get();
+                    currentUser.emailVerified = user.emailVerification || false;
+                    localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+                    updateUserInterface();
+                } catch (error) {
+                    console.error('Error refreshing user verification status:', error);
+                }
+            }, 1000);
+        }
+    } else if (errorParam) {
+        // Verification failed
+        showToast('❌ Email verification failed. Please try again or contact support.', 'error', 8000);
         
         // Clean URL without reloading page
         const newUrl = window.location.pathname;
