@@ -21,17 +21,15 @@ function initializePuter() {
 // Appwrite Configuration
 const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
-const APPWRITE_SERVER_API_KEY = 'standard_19b5bb2db393e1df689b8275ea2129dadbe72f183e10739fe087c76f239a03748b1967ee7bbe6533129fe087c76f239a03748b1967ee7bbe6533125';
 
 // Initialize Appwrite client
 let appwriteClient = null;
 let appwriteAccount = null;
 let appwriteDatabases = null;
-let appwriteUsers = null; // For server-side user management
 
 // Check if Appwrite is available
 if (typeof Appwrite !== 'undefined') {
-    const { Client, Account, Databases, Storage, Teams, Users } = Appwrite;
+    const { Client, Account, Databases, Storage, Teams } = Appwrite;
     appwriteClient = new Client();
     appwriteClient
         .setEndpoint(APPWRITE_ENDPOINT)
@@ -39,93 +37,8 @@ if (typeof Appwrite !== 'undefined') {
 
     appwriteAccount = new Account(appwriteClient);
     appwriteDatabases = new Databases(appwriteClient);
-    
-    // Initialize server client for admin operations
-    let serverClient = new Client();
-    serverClient
-        .setEndpoint(APPWRITE_ENDPOINT)
-        .setProject(APPWRITE_PROJECT_ID)
-        .setKey(APPWRITE_SERVER_API_KEY);
-    
-    appwriteUsers = new Users(serverClient);
 } else {
     console.warn('Appwrite SDK not loaded - authentication will be disabled');
-}
-
-// Server-side API functions for admin operations
-async function makeServerRequest(endpoint, options = {}) {
-    try {
-        const response = await fetch(`${APPWRITE_ENDPOINT}${endpoint}`, {
-            method: options.method || 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Appwrite-Project': APPWRITE_PROJECT_ID,
-                'X-Appwrite-Key': APPWRITE_SERVER_API_KEY,
-                ...options.headers
-            },
-            body: options.body ? JSON.stringify(options.body) : null
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Server request failed');
-        }
-        
-        return data;
-    } catch (error) {
-        console.error('Server request error:', error);
-        throw error;
-    }
-}
-
-// Get all users (admin only)
-async function getAllUsers() {
-    try {
-        const response = await makeServerRequest('/users');
-        return response.users || [];
-    } catch (error) {
-        console.error('Error fetching all users:', error);
-        return [];
-    }
-}
-
-// Get user by ID (admin only)
-async function getUserById(userId) {
-    try {
-        const response = await makeServerRequest(`/users/${userId}`);
-        return response;
-    } catch (error) {
-        console.error('Error fetching user:', error);
-        return null;
-    }
-}
-
-// Update user (admin only)
-async function updateUser(userId, data) {
-    try {
-        const response = await makeServerRequest(`/users/${userId}`, {
-            method: 'PATCH',
-            body: data
-        });
-        return response;
-    } catch (error) {
-        console.error('Error updating user:', error);
-        throw error;
-    }
-}
-
-// Delete user (admin only)
-async function deleteUserById(userId) {
-    try {
-        const response = await makeServerRequest(`/users/${userId}`, {
-            method: 'DELETE'
-        });
-        return response;
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        throw error;
-    }
 }
 
 // DOM Elements
@@ -1389,15 +1302,13 @@ async function handleSignup(event) {
             isPro: false,
             isAdmin: false,
             isOwner: email === 'coenyin9@gmail.com',
-            profilePhoto: null,
-            emailVerified: false
+            profilePhoto: null
         };
         
         // Set admin/owner status for the owner account
         if (currentUser.isOwner) {
             currentUser.isAdmin = true;
             currentUser.isPro = true;
-            currentUser.emailVerified = true; // Owner is auto-verified
         }
         
         localStorage.setItem('talkie-user', JSON.stringify(currentUser));
@@ -1413,7 +1324,7 @@ async function handleSignup(event) {
     }
     
     try {
-        // Create account with Appwrite and send verification email
+        // Create account with Appwrite
         const response = await appwriteAccount.create(
             'unique()', // Let Appwrite generate ID
             email,
@@ -1423,23 +1334,44 @@ async function handleSignup(event) {
         
         console.log('Account created:', response);
         
-        // Send email verification
-        try {
-            await appwriteAccount.createVerification('https://coen-yin.github.io/verify');
-            showToast('Account created! Please check your email to verify your account before signing in.', 'success');
-        } catch (verificationError) {
-            console.error('Email verification error:', verificationError);
-            showToast('Account created, but email verification failed. You can still sign in.', 'warning');
+        // Automatically login after successful signup
+        await appwriteAccount.createEmailSession(email, password);
+        
+        // Get user data
+        const user = await appwriteAccount.get();
+        
+        // Set up user object
+        currentUser = {
+            name: user.name,
+            email: user.email,
+            appwriteId: user.$id,
+            isPro: false,
+            isAdmin: false,
+            isOwner: email === 'coenyin9@gmail.com',
+            profilePhoto: null
+        };
+        
+        // Set admin/owner status for the owner account
+        if (currentUser.isOwner) {
+            currentUser.isAdmin = true;
+            currentUser.isPro = true;
         }
         
-        // Don't automatically log in - user needs to verify email first
-        hideAuthModal();
+        localStorage.setItem('talkie-user', JSON.stringify(currentUser));
         
-        // Show login modal with instructions
-        setTimeout(() => {
-            showAuthModal('login');
-            showToast('Please verify your email and then sign in with your credentials.', 'info');
-        }, 500);
+        // Store user in admin user management system
+        storeUserInAdminSystem(currentUser);
+        
+        // Check for pending pro upgrade
+        if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+            sessionStorage.removeItem('pendingProUpgrade');
+            upgradeToPro();
+        }
+        
+        hideAuthModal();
+        updateUserInterface();
+        initializeTheme();
+        showToast(`Welcome to Talkie Gen AI, ${name}!`, 'success');
         
     } catch (error) {
         console.error('Signup error:', error);
@@ -1548,23 +1480,6 @@ async function handleLogin(event) {
         // Get user data
         const user = await appwriteAccount.get();
         
-        // Check email verification status
-        if (!user.emailVerification) {
-            showToast('Please verify your email before signing in. Check your inbox for the verification link.', 'warning');
-            
-            // Option to resend verification
-            try {
-                await appwriteAccount.createVerification('https://coen-yin.github.io/verify');
-                showToast('Verification email resent. Please check your inbox.', 'info');
-            } catch (resendError) {
-                console.error('Resend verification error:', resendError);
-            }
-            
-            // Log out the unverified user
-            await appwriteAccount.deleteSession('current');
-            return;
-        }
-        
         // Set up user object
         currentUser = {
             name: user.name,
@@ -1573,8 +1488,7 @@ async function handleLogin(event) {
             isPro: false,
             isAdmin: false,
             isOwner: email === 'coenyin9@gmail.com',
-            profilePhoto: user.prefs?.profilePhoto || null,
-            emailVerified: user.emailVerification
+            profilePhoto: user.prefs?.profilePhoto || null
         };
         
         // Set admin/owner status for the owner account
@@ -5224,34 +5138,16 @@ function hideAdminPanel() {
     document.body.style.overflow = 'auto';
 }
 
-async function loadAdminStats() {
+function loadAdminStats() {
     const stats = JSON.parse(localStorage.getItem('talkie-stats') || '{}');
-    let users = {};
-    let userCount = 0;
-    
-    // Try to get real user count from Appwrite if admin
-    if (currentUser && (currentUser.isAdmin || currentUser.isOwner)) {
-        try {
-            users = await listAllUsers();
-            userCount = Object.keys(users).length;
-        } catch (error) {
-            console.error('Error loading user data from Appwrite:', error);
-            // Fallback to local storage
-            users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-            userCount = Object.keys(users).length;
-        }
-    } else {
-        users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        userCount = Object.keys(users).length;
-    }
-    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const today = new Date().toISOString().split('T')[0];
     
     // Update stat displays
     document.getElementById('totalVisitors').textContent = stats.totalVisits || 0;
     document.getElementById('uniqueVisitors').textContent = stats.uniqueVisitors || 0;
     document.getElementById('todayVisits').textContent = stats.dailyVisits?.[today] || 0;
-    document.getElementById('registeredUsers').textContent = userCount;
+    document.getElementById('registeredUsers').textContent = Object.keys(users).length;
     
     // Load recent activity
     const activityList = document.getElementById('activityList');
@@ -5287,7 +5183,7 @@ function setupAdminUserManagement() {
     const deleteUserBtn = document.getElementById('deleteUserBtn');
     
     if (searchUserBtn) {
-        searchUserBtn.addEventListener('click', () => searchUser());
+        searchUserBtn.addEventListener('click', searchUser);
     }
     
     if (userSearchInput) {
@@ -5348,56 +5244,17 @@ function addListAllUsersButton() {
 }
 
 // Function to list all users
-async function listAllUsers() {
+function listAllUsers() {
     try {
-        let users = {};
-        let userEmails = [];
+        // Force sync first
+        syncExistingUserData();
         
-        // Try to get users from Appwrite server API first
-        if (currentUser && (currentUser.isAdmin || currentUser.isOwner)) {
-            try {
-                const appwriteUsers = await getAllUsers();
-                console.log('Appwrite users:', appwriteUsers);
-                
-                // Convert Appwrite users to our format
-                appwriteUsers.forEach(user => {
-                    users[user.email] = {
-                        name: user.name,
-                        email: user.email,
-                        appwriteId: user.$id,
-                        isPro: false, // We'll enhance this with user preferences later
-                        isAdmin: user.email === 'coenyin9@gmail.com',
-                        isOwner: user.email === 'coenyin9@gmail.com',
-                        profilePhoto: null,
-                        emailVerified: user.emailVerification,
-                        signupDate: user.$createdAt,
-                        lastLoginDate: user.$updatedAt
-                    };
-                });
-                
-                userEmails = Object.keys(users);
-                
-                // Also sync with local storage for compatibility
-                localStorage.setItem('talkie-users', JSON.stringify(users));
-                
-                showToast(`Found ${userEmails.length} user(s) from Appwrite. Check console for details.`, 'success');
-            } catch (serverError) {
-                console.error('Error fetching from Appwrite:', serverError);
-                showToast('Failed to fetch users from Appwrite, falling back to local data', 'warning');
-                
-                // Fallback to local storage
-                users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-                userEmails = Object.keys(users);
-            }
-        } else {
-            // Non-admin users or fallback
-            users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-            userEmails = Object.keys(users);
-        }
+        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
+        const userEmails = Object.keys(users);
         
         if (userEmails.length === 0) {
             showToast('No users found in the system. Users will appear after they sign up.', 'info');
-            return users;
+            return;
         }
         
         // Show all users in console and toast
@@ -5408,22 +5265,17 @@ async function listAllUsers() {
         const userSummary = userEmails.slice(0, 3).join(', ') + 
                            (userEmails.length > 3 ? ` and ${userEmails.length - 3} more` : '');
         
-        if (!currentUser || (!currentUser.isAdmin && !currentUser.isOwner)) {
-            showToast(`Found ${userEmails.length} user(s): ${userSummary}. Check console for full list.`, 'success');
-        }
+        showToast(`Found ${userEmails.length} user(s): ${userSummary}. Check console for full list.`, 'success');
         
         // If there's only one user, auto-select them
-        if (userEmails.length === 1 && document.getElementById('userSearchInput')) {
+        if (userEmails.length === 1) {
             document.getElementById('userSearchInput').value = userEmails[0];
             searchUser();
         }
         
-        return users;
-        
     } catch (error) {
         console.error('Error listing all users:', error);
         showToast('Error retrieving user list', 'error');
-        return {};
     }
 }
 
@@ -5462,28 +5314,17 @@ function checkAdminSystem() {
 
 let selectedUserEmail = null;
 
-async function searchUser() {
+function searchUser() {
     const email = document.getElementById('userSearchInput').value.trim();
     if (!email) {
         showToast('Please enter an email address', 'warning');
         return;
     }
     
-    let users = {};
+    // Force sync before searching to ensure we have all users
+    syncExistingUserData();
     
-    // Try to get fresh user data from Appwrite if admin
-    if (currentUser && (currentUser.isAdmin || currentUser.isOwner)) {
-        try {
-            users = await listAllUsers();
-        } catch (error) {
-            console.error('Error fetching users from Appwrite:', error);
-            // Fallback to local storage
-            users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        }
-    } else {
-        users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-    }
-    
+    const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
     const user = users[email];
     
     if (!user) {
