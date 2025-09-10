@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Talkie Gen AI</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Appwrite SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@20.0.0"></script>
+    
+    <style>
+        .verification-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .verification-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .verification-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .verification-icon.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            animation: pulse 2s infinite;
+        }
+        
+        .verification-icon.success {
+            background: #e8f5e8;
+            color: #4caf50;
+        }
+        
+        .verification-icon.error {
+            background: #ffebee;
+            color: #f44336;
+        }
+        
+        .verification-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .verification-message {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        
+        .verification-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="verification-card">
+            <div class="verification-icon loading" id="verificationIcon">
+                <i class="fas fa-envelope-open-text"></i>
+            </div>
+            
+            <h1 class="verification-title" id="verificationTitle">Verifying Your Email</h1>
+            
+            <div class="verification-message" id="verificationMessage">
+                <div class="spinner"></div>
+                Please wait while we verify your email address...
+            </div>
+            
+            <div class="verification-actions" id="verificationActions" style="display: none;">
+                <a href="index.html" class="btn btn-primary">
+                    <i class="fas fa-home"></i>
+                    Go to App
+                </a>
+                <a href="#" class="btn btn-secondary" id="resendBtn" style="display: none;">
+                    <i class="fas fa-paper-plane"></i>
+                    Resend Email
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Import { Client, Account } from "https://cdn.jsdelivr.net/npm/appwrite@20.0.0/+esm";
+
+        // Initialize Appwrite client
+        const { Client, Account } = Appwrite;
+        const client = new Client()
+            .setEndpoint("https://syd.cloud.appwrite.io/v1")  // Your endpoint
+            .setProject("68bb8b8b00136de837e5");             // Your project ID
+
+        const account = new Account(client);
+
+        async function verifyUser() {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get("userId");
+            const secret = params.get("secret");
+
+            const iconEl = document.getElementById("verificationIcon");
+            const titleEl = document.getElementById("verificationTitle");
+            const messageEl = document.getElementById("verificationMessage");
+            const actionsEl = document.getElementById("verificationActions");
+
+            if (!userId || !secret) {
+                // Invalid verification link
+                iconEl.className = "verification-icon error";
+                iconEl.innerHTML = '<i class="fas fa-times-circle"></i>';
+                titleEl.textContent = "Invalid Verification Link";
+                messageEl.innerHTML = `
+                    <p>❌ This verification link is invalid or malformed.</p>
+                    <p>Please check your email for the correct verification link or request a new one.</p>
+                `;
+                actionsEl.style.display = "flex";
+                document.getElementById("resendBtn").style.display = "inline-flex";
+                return;
+            }
+
+            try {
+                // Perform email verification
+                await account.updateVerification(userId, secret);
+                
+                // Success
+                iconEl.className = "verification-icon success";
+                iconEl.innerHTML = '<i class="fas fa-check-circle"></i>';
+                titleEl.textContent = "Email Verified Successfully!";
+                messageEl.innerHTML = `
+                    <p>✅ Your email has been verified successfully!</p>
+                    <p>You can now access all features of Talkie Gen AI. Welcome aboard!</p>
+                `;
+                actionsEl.style.display = "flex";
+                
+                // Redirect to main app with success parameter after 3 seconds
+                setTimeout(() => {
+                    window.location.href = 'index.html?verified=true';
+                }, 3000);
+                
+            } catch (err) {
+                console.error('Verification error:', err);
+                
+                // Error handling
+                iconEl.className = "verification-icon error";
+                iconEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                titleEl.textContent = "Verification Failed";
+                
+                let errorMessage = "❌ Verification failed: " + err.message;
+                
+                // Handle specific error cases
+                if (err.code === 401) {
+                    errorMessage = "❌ Invalid or expired verification link. Please request a new verification email.";
+                    document.getElementById("resendBtn").style.display = "inline-flex";
+                } else if (err.code === 404) {
+                    errorMessage = "❌ User not found. Please make sure you're using the correct verification link.";
+                } else if (err.message.includes('already verified')) {
+                    iconEl.className = "verification-icon success";
+                    iconEl.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    titleEl.textContent = "Already Verified";
+                    errorMessage = "✅ This email address has already been verified. You can proceed to use the app.";
+                    
+                    // Redirect to main app after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'index.html?verified=true';
+                    }, 3000);
+                }
+                
+                messageEl.innerHTML = `<p>${errorMessage}</p>`;
+                actionsEl.style.display = "flex";
+            }
+        }
+
+        // Setup resend functionality
+        document.getElementById("resendBtn").addEventListener("click", async (e) => {
+            e.preventDefault();
+            
+            const email = prompt("Please enter your email address to resend verification:");
+            if (!email) return;
+            
+            try {
+                await account.createVerification('https://coen-yin.github.io/verify.html');
+                alert("Verification email sent! Please check your inbox.");
+            } catch (err) {
+                alert("Failed to send verification email: " + err.message);
+            }
+        });
+
+        // Run verification when the page loads
+        document.addEventListener('DOMContentLoaded', verifyUser);
+    </script>
+</body>
+</html>
