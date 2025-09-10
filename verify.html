@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Talkie Gen AI</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        
+        .verify-container {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            border-radius: 50%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .status-message {
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-loading {
+            background: #e7f3ff;
+            color: #0c4a6e;
+            border: 1px solid #b3d9ff;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Appwrite SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+</head>
+<body>
+    <div class="verify-container">
+        <img src="talkiegen.png" alt="Talkie Gen AI" class="logo">
+        <h1>Email Verification</h1>
+        
+        <div id="status" class="status-message status-loading">
+            <div class="spinner"></div>
+            Verifying your email address...
+        </div>
+        
+        <a href="index.html" id="continueBtn" class="btn" style="display: none;">
+            Continue to Talkie Gen AI
+        </a>
+    </div>
+
+    <script>
+        // Appwrite Configuration (same as main app)
+        const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
+        const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
+        
+        let appwriteClient;
+        let appwriteAccount;
+        
+        // Initialize Appwrite
+        if (typeof Appwrite !== 'undefined') {
+            const { Client, Account } = Appwrite;
+            appwriteClient = new Client();
+            appwriteClient
+                .setEndpoint(APPWRITE_ENDPOINT)
+                .setProject(APPWRITE_PROJECT_ID);
+            
+            appwriteAccount = new Account(appwriteClient);
+        }
+        
+        async function verifyEmail() {
+            const statusDiv = document.getElementById('status');
+            const continueBtn = document.getElementById('continueBtn');
+            
+            try {
+                // Get URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const userId = urlParams.get('userId');
+                const secret = urlParams.get('secret');
+                
+                if (!userId || !secret) {
+                    throw new Error('Invalid verification link. Missing verification parameters.');
+                }
+                
+                if (!appwriteAccount) {
+                    throw new Error('Appwrite is not available. Please try again later.');
+                }
+                
+                // Confirm verification
+                await appwriteAccount.updateVerification(userId, secret);
+                
+                // Success
+                statusDiv.className = 'status-message status-success';
+                statusDiv.innerHTML = '✅ Email verified successfully! You can now sign in to your account.';
+                continueBtn.style.display = 'inline-block';
+                
+            } catch (error) {
+                console.error('Verification error:', error);
+                
+                // Error
+                statusDiv.className = 'status-message status-error';
+                statusDiv.innerHTML = `❌ Verification failed: ${error.message || 'Please try again or contact support.'}`;
+                continueBtn.style.display = 'inline-block';
+                continueBtn.textContent = 'Go to Sign In';
+            }
+        }
+        
+        // Start verification when page loads
+        document.addEventListener('DOMContentLoaded', verifyEmail);
+    </script>
+</body>
+</html>
