@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Talkie Gen AI</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Appwrite SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    
+    <style>
+        body {
+            background: var(--gradient-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .verification-container {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .verification-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+        
+        .verification-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            position: relative;
+        }
+        
+        .verification-icon.loading {
+            animation: pulse 2s infinite;
+        }
+        
+        .verification-icon.success {
+            background: var(--gradient-success);
+        }
+        
+        .verification-icon.error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .verification-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        
+        .verification-message {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .verification-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .verify-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .verify-btn.primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+        
+        .verify-btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+        
+        .verify-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .verification-details {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-family: monospace;
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="verification-icon loading" id="verificationIcon">
+            <i class="fas fa-envelope-open" id="iconElement"></i>
+        </div>
+        
+        <h1 class="verification-title" id="verificationTitle">Verifying Email...</h1>
+        <p class="verification-message" id="verificationMessage">
+            Please wait while we verify your email address.
+        </p>
+        
+        <div class="verification-actions" id="verificationActions">
+            <div class="loader"></div>
+        </div>
+        
+        <div class="verification-details" id="verificationDetails" style="display: none;">
+            <div class="detail-item">
+                <span class="detail-label">User ID:</span>
+                <span class="detail-value" id="detailUserId">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Secret:</span>
+                <span class="detail-value" id="detailSecret">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value" id="detailStatus">Processing</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Appwrite
+        const { Client, Account } = Appwrite;
+        const client = new Client();
+        client
+            .setEndpoint('https://syd.cloud.appwrite.io/v1')
+            .setProject('68bb8b8b00136de837e5');
+        
+        const account = new Account(client);
+
+        // DOM Elements
+        const verificationIcon = document.getElementById('verificationIcon');
+        const iconElement = document.getElementById('iconElement');
+        const verificationTitle = document.getElementById('verificationTitle');
+        const verificationMessage = document.getElementById('verificationMessage');
+        const verificationActions = document.getElementById('verificationActions');
+        const verificationDetails = document.getElementById('verificationDetails');
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        const secret = urlParams.get('secret');
+
+        // Update details
+        document.getElementById('detailUserId').textContent = userId || 'Not provided';
+        document.getElementById('detailSecret').textContent = secret ? secret.substring(0, 16) + '...' : 'Not provided';
+
+        // Verify email function
+        async function verifyEmail() {
+            try {
+                // Show details in debug mode
+                if (urlParams.get('debug') === 'true') {
+                    verificationDetails.style.display = 'block';
+                }
+
+                if (!userId || !secret) {
+                    throw new Error('Invalid verification link - missing parameters');
+                }
+
+                document.getElementById('detailStatus').textContent = 'Verifying...';
+
+                // Verify the email
+                await account.updateVerification(userId, secret);
+
+                // Success
+                verificationIcon.className = 'verification-icon success';
+                iconElement.className = 'fas fa-check-circle';
+                verificationTitle.textContent = 'Email Verified!';
+                verificationMessage.textContent = 'Your email has been successfully verified. You can now access all features of Talkie Gen AI.';
+                
+                document.getElementById('detailStatus').textContent = 'Success';
+
+                verificationActions.innerHTML = `
+                    <a href="/" class="verify-btn primary">
+                        <i class="fas fa-home"></i>
+                        Go to Talkie Gen AI
+                    </a>
+                `;
+
+                // Redirect after 3 seconds
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Verification error:', error);
+                
+                // Error
+                verificationIcon.className = 'verification-icon error';
+                iconElement.className = 'fas fa-exclamation-triangle';
+                verificationTitle.textContent = 'Verification Failed';
+                
+                let errorMessage = 'Unable to verify your email address. ';
+                
+                if (error.code === 401) {
+                    errorMessage += 'The verification link has expired or is invalid.';
+                } else if (error.code === 404) {
+                    errorMessage += 'The verification link is not valid.';
+                } else {
+                    errorMessage += error.message || 'Please try again or contact support.';
+                }
+                
+                verificationMessage.textContent = errorMessage;
+                document.getElementById('detailStatus').textContent = 'Failed: ' + (error.code || 'Unknown error');
+
+                verificationActions.innerHTML = `
+                    <a href="/" class="verify-btn primary">
+                        <i class="fas fa-home"></i>
+                        Back to Home
+                    </a>
+                    <button onclick="retryVerification()" class="verify-btn secondary">
+                        <i class="fas fa-redo"></i>
+                        Retry
+                    </button>
+                `;
+            }
+        }
+
+        // Retry verification
+        function retryVerification() {
+            verificationIcon.className = 'verification-icon loading';
+            iconElement.className = 'fas fa-envelope-open';
+            verificationTitle.textContent = 'Retrying Verification...';
+            verificationMessage.textContent = 'Please wait while we retry the verification process.';
+            verificationActions.innerHTML = '<div class="loader"></div>';
+            
+            setTimeout(verifyEmail, 1000);
+        }
+
+        // Initialize verification when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Small delay for better UX
+            setTimeout(verifyEmail, 1000);
+        });
+    </script>
+</body>
+</html>
