@@ -2267,26 +2267,393 @@ What specific aspect of your image or image-related task would you like help wit
 What specific task would you like help with?`;
     }
     
-    if (message.includes('code') || message.includes('programming') || message.includes('function') || message.includes('javascript') || message.includes('python') || message.includes('html') || message.includes('css')) {
-        return `I'd be happy to help you with programming! I can assist with:
+    // Enhanced coding response system
+    if (message.includes('code') || message.includes('programming') || message.includes('function') || message.includes('javascript') || message.includes('python') || message.includes('html') || message.includes('css') || message.includes('prime') || message.includes('algorithm')) {
+        
+        // Specific programming requests
+        if (message.includes('prime') && (message.includes('python') || message.includes('function'))) {
+            return `Here's a comprehensive Python solution for finding prime numbers! 🐍
 
-• Writing code snippets and functions
-• Debugging and troubleshooting
-• Explaining programming concepts
-• Code reviews and optimization
-• Best practices and patterns
+**Method 1: Simple Prime Checker**
+\`\`\`python
+def is_prime(n):
+    """Check if a number is prime"""
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    
+    # Check odd divisors up to sqrt(n)
+    for i in range(3, int(n**0.5) + 1, 2):
+        if n % i == 0:
+            return False
+    return True
 
-Please share your specific coding question or the programming language you're working with, and I'll provide detailed assistance. For example:
+# Example usage
+print(is_prime(17))  # True
+print(is_prime(25))  # False
+\`\`\`
 
+**Method 2: Generate Prime Numbers List**
+\`\`\`python
+def find_primes(limit):
+    """Find all prime numbers up to a limit using Sieve of Eratosthenes"""
+    if limit < 2:
+        return []
+    
+    # Create boolean array and set all to True
+    is_prime = [True] * (limit + 1)
+    is_prime[0] = is_prime[1] = False
+    
+    # Sieve algorithm
+    for i in range(2, int(limit**0.5) + 1):
+        if is_prime[i]:
+            for j in range(i*i, limit + 1, i):
+                is_prime[j] = False
+    
+    # Return list of prime numbers
+    return [i for i in range(2, limit + 1) if is_prime[i]]
+
+# Example usage
+primes = find_primes(50)
+print(f"Primes up to 50: {primes}")
+\`\`\`
+
+**Method 3: Prime Generator (Memory Efficient)**
+\`\`\`python
+def prime_generator():
+    """Generator that yields prime numbers infinitely"""
+    yield 2
+    primes = [2]
+    candidate = 3
+    
+    while True:
+        is_prime = True
+        sqrt_candidate = candidate**0.5
+        
+        for prime in primes:
+            if prime > sqrt_candidate:
+                break
+            if candidate % prime == 0:
+                is_prime = False
+                break
+        
+        if is_prime:
+            primes.append(candidate)
+            yield candidate
+        
+        candidate += 2
+
+# Example usage
+prime_gen = prime_generator()
+first_10_primes = [next(prime_gen) for _ in range(10)]
+print(f"First 10 primes: {first_10_primes}")
+\`\`\`
+
+💡 **Explanation:**
+- **Method 1**: Basic primality test, O(√n) time complexity
+- **Method 2**: Sieve of Eratosthenes, efficient for finding all primes up to a limit
+- **Method 3**: Generator for memory-efficient infinite prime sequence
+
+🚀 **Performance Tips:**
+- Use Method 2 for finding all primes up to a specific number
+- Use Method 1 for checking individual numbers
+- Use Method 3 when you need primes one at a time
+
+Would you like me to explain any of these algorithms in more detail or show you how to optimize them further?`;
+        }
+        
+        if (message.includes('javascript') || message.includes('js')) {
+            return `Great! I'm here to help with JavaScript! 🚀 Here are some powerful JavaScript examples:
+
+**ES6+ Function Examples:**
 \`\`\`javascript
-// Example: Here's a simple function structure
-function exampleFunction(parameter) {
-    // Your code logic here
-    return result;
+// Arrow functions with different use cases
+const square = x => x * x;
+const add = (a, b) => a + b;
+const greet = name => \`Hello, \${name}!\`;
+
+// Array methods for data manipulation
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+const evens = numbers.filter(n => n % 2 === 0);
+const sum = numbers.reduce((acc, n) => acc + n, 0);
+
+console.log('Doubled:', doubled); // [2, 4, 6, 8, 10]
+console.log('Evens:', evens);     // [2, 4]
+console.log('Sum:', sum);         // 15
+\`\`\`
+
+**Async/Await Example:**
+\`\`\`javascript
+// Modern async function
+async function fetchUserData(userId) {
+    try {
+        const response = await fetch(\`/api/users/\${userId}\`);
+        if (!response.ok) {
+            throw new Error(\`HTTP error! status: \${response.status}\`);
+        }
+        const userData = await response.json();
+        return userData;
+    } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        return null;
+    }
+}
+
+// Usage
+fetchUserData(123).then(user => {
+    if (user) {
+        console.log('User:', user);
+    }
+});
+\`\`\`
+
+**DOM Manipulation:**
+\`\`\`javascript
+// Modern DOM selection and manipulation
+const elements = {
+    button: document.querySelector('#myButton'),
+    list: document.querySelector('#myList'),
+    input: document.querySelector('#userInput')
+};
+
+// Event handling with modern syntax
+elements.button?.addEventListener('click', () => {
+    const value = elements.input?.value?.trim();
+    if (value) {
+        const listItem = document.createElement('li');
+        listItem.textContent = value;
+        elements.list?.appendChild(listItem);
+        elements.input.value = '';
+    }
+});
+\`\`\`
+
+What specific JavaScript functionality would you like help with? I can assist with:
+• Modern ES6+ features • DOM manipulation • Async programming • Functions & closures • APIs & fetch • Error handling`;
+        }
+        
+        if (message.includes('html') || message.includes('web') || message.includes('website')) {
+            return `Perfect! Let me help you with HTML and web development! 🌐
+
+**Modern HTML5 Structure:**
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Web Page</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>My Website</h1>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section id="home">
+            <h2>Welcome</h2>
+            <p>This is a modern, semantic HTML page.</p>
+        </section>
+        
+        <section id="about">
+            <h2>About Us</h2>
+            <article>
+                <h3>Our Story</h3>
+                <p>Content goes here...</p>
+            </article>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2024 My Website. All rights reserved.</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+\`\`\`
+
+**Interactive Form Example:**
+\`\`\`html
+<form id="contactForm" novalidate>
+    <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <span class="error-message" id="emailError"></span>
+    </div>
+    
+    <div class="form-group">
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" rows="4" required></textarea>
+        <span class="error-message" id="messageError"></span>
+    </div>
+    
+    <button type="submit">Send Message</button>
+</form>
+\`\`\`
+
+🎯 **Best Practices I'm showing:**
+• Semantic HTML elements (header, nav, main, section, article, footer)
+• Proper meta tags for responsiveness
+• Accessible form labels and structure
+• Modern HTML5 input types
+
+What specific HTML feature would you like help with? Forms, semantics, accessibility, or something else?`;
+        }
+        
+        if (message.includes('css') || message.includes('style') || message.includes('design')) {
+            return `Excellent! Let me show you some modern CSS techniques! 🎨
+
+**Modern CSS Grid & Flexbox:**
+\`\`\`css
+/* Modern CSS Grid Layout */
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+}
+
+/* Flexbox for component layout */
+.card {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 \`\`\`
 
-What programming challenge are you working on?`;
+**Custom Properties & Modern Animations:**
+\`\`\`css
+:root {
+    --primary-color: #3b82f6;
+    --secondary-color: #64748b;
+    --background: #f8fafc;
+    --text-color: #1e293b;
+    --border-radius: 8px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.button:hover::before {
+    left: 100%;
+}
+\`\`\`
+
+**Responsive Design:**
+\`\`\`css
+/* Mobile-first responsive design */
+.responsive-layout {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .responsive-layout {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .responsive-layout {
+        grid-template-columns: 1fr 3fr 1fr;
+    }
+}
+\`\`\`
+
+What CSS topic interests you most? Animations, layouts, responsive design, or modern features?`;
+        }
+        
+        // Default programming response if no specific language detected
+        return `I'd be happy to help you with programming! I can assist with:
+
+🔧 **Languages & Technologies:**
+• **JavaScript/TypeScript** - Modern ES6+, async/await, DOM manipulation
+• **Python** - Functions, data structures, algorithms, libraries
+• **HTML/CSS** - Semantic markup, modern layouts, animations
+• **React/Vue** - Components, state management, hooks
+• **Node.js** - Server-side development, APIs, databases
+
+💡 **What I can help with:**
+• Writing efficient, clean code with best practices
+• Debugging and troubleshooting existing code
+• Code optimization and performance improvements
+• Explaining complex programming concepts
+• Algorithm design and data structure implementation
+• Code reviews and architectural advice
+
+\`\`\`javascript
+// Example: Modern JavaScript pattern
+const createUserManager = () => ({
+    users: new Map(),
+    
+    addUser(id, userData) {
+        this.users.set(id, { ...userData, createdAt: new Date() });
+        return this;
+    },
+    
+    getUser(id) {
+        return this.users.get(id);
+    },
+    
+    getAllUsers() {
+        return Array.from(this.users.values());
+    }
+});
+
+const userManager = createUserManager();
+userManager.addUser(1, { name: 'John', email: 'john@example.com' });
+\`\`\`
+
+What specific programming challenge are you working on? Please share your code or describe what you're trying to build!`;
     }
     
     if (message.includes('write') || message.includes('essay') || message.includes('story') || message.includes('email') || message.includes('letter')) {
@@ -3034,6 +3401,9 @@ function createCodeBlock(code, language = '') {
     // Get language display name and icon
     const langInfo = getLanguageInfo(language.toLowerCase());
     
+    // Get file extension for download
+    const fileExtension = getFileExtension(language.toLowerCase());
+    
     return `
         <div class="code-container">
             <div class="code-header">
@@ -3041,10 +3411,16 @@ function createCodeBlock(code, language = '') {
                     <i class="${langInfo.icon}"></i>
                     <span>${langInfo.name}</span>
                 </div>
-                <button class="code-copy-btn" onclick="copyCodeBlock('${blockId}')" title="Copy code">
-                    <i class="fas fa-copy"></i>
-                    <span class="copy-text">Copy</span>
-                </button>
+                <div class="code-actions">
+                    <button class="code-copy-btn" onclick="copyCodeBlock('${blockId}')" title="Copy code">
+                        <i class="fas fa-copy"></i>
+                        <span class="copy-text">Copy</span>
+                    </button>
+                    <button class="code-download-btn" onclick="downloadCodeBlock('${blockId}', '${fileExtension}', '${langInfo.name}')" title="Download as ${fileExtension} file">
+                        <i class="fas fa-download"></i>
+                        <span class="download-text">Download</span>
+                    </button>
+                </div>
             </div>
             <div class="code-content">
                 <pre><code id="${blockId}" class="language-${language}">${escapeHtml(code)}</code></pre>
@@ -3148,6 +3524,35 @@ function getLanguageInfo(language) {
     return langMap[language] || langMap['text'];
 }
 
+function getFileExtension(language) {
+    const extensionMap = {
+        'html': '.html',
+        'css': '.css',
+        'javascript': '.js',
+        'js': '.js',
+        'python': '.py',
+        'py': '.py',
+        'java': '.java',
+        'cpp': '.cpp',
+        'c': '.c',
+        'json': '.json',
+        'sql': '.sql',
+        'bash': '.sh',
+        'sh': '.sh',
+        'php': '.php',
+        'ruby': '.rb',
+        'go': '.go',
+        'rust': '.rs',
+        'swift': '.swift',
+        'kotlin': '.kt',
+        'typescript': '.ts',
+        'ts': '.ts',
+        'text': '.txt'
+    };
+    
+    return extensionMap[language] || '.txt';
+}
+
 function copyCodeBlock(blockId) {
     const codeElement = document.getElementById(blockId);
     if (!codeElement) return;
@@ -3186,6 +3591,47 @@ function copyCodeBlock(blockId) {
         
         showToast('Code copied to clipboard!', 'success');
     });
+}
+
+function downloadCodeBlock(blockId, fileExtension, languageName) {
+    const codeElement = document.getElementById(blockId);
+    if (!codeElement) return;
+    
+    const code = codeElement.textContent;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const filename = `code-${languageName.toLowerCase()}-${timestamp}${fileExtension}`;
+    
+    // Create blob and download
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Find the download button and show success state
+    const downloadBtn = document.querySelector(`button[onclick*="downloadCodeBlock('${blockId}'"]`);
+    if (downloadBtn) {
+        const originalText = downloadBtn.querySelector('.download-text').textContent;
+        const icon = downloadBtn.querySelector('i');
+        
+        // Update button to show success
+        icon.className = 'fas fa-check';
+        downloadBtn.querySelector('.download-text').textContent = 'Downloaded!';
+        downloadBtn.classList.add('downloaded');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+            icon.className = 'fas fa-download';
+            downloadBtn.querySelector('.download-text').textContent = originalText;
+            downloadBtn.classList.remove('downloaded');
+        }, 2000);
+    }
+    
+    showToast(`Code downloaded as ${filename}`, 'success');
 }
 
 function copyMessage(encodedContent) {

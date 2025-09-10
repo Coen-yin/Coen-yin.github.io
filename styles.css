@@ -1971,7 +1971,14 @@ textarea:focus-visible {
     color: var(--accent-primary);
 }
 
-.code-copy-btn {
+.code-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.code-copy-btn,
+.code-download-btn {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-light);
     border-radius: 6px;
@@ -1994,13 +2001,28 @@ textarea:focus-visible {
     box-shadow: var(--shadow-sm);
 }
 
+.code-download-btn:hover {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
 .code-copy-btn.copied {
     background: var(--success);
     color: white;
     border-color: var(--success);
 }
 
-.code-copy-btn i {
+.code-download-btn.downloaded {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.code-copy-btn i,
+.code-download-btn i {
     font-size: 12px;
 }
 
@@ -2056,7 +2078,8 @@ textarea:focus-visible {
     border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-[data-theme="pro"] .code-copy-btn {
+[data-theme="pro"] .code-copy-btn,
+[data-theme="pro"] .code-download-btn {
     border: 1px solid rgba(255, 215, 0, 0.3);
     background: rgba(255, 215, 0, 0.1);
 }
@@ -2064,6 +2087,11 @@ textarea:focus-visible {
 [data-theme="pro"] .code-copy-btn:hover {
     background: var(--gradient-primary);
     border-color: var(--accent-primary);
+}
+
+[data-theme="pro"] .code-download-btn:hover {
+    background: var(--gradient-success);
+    border-color: var(--success);
 }
 
 /* Dark theme adjustments */
@@ -2082,12 +2110,18 @@ textarea:focus-visible {
         font-size: 13px;
     }
     
-    .code-copy-btn {
+    .code-actions {
+        gap: 6px;
+    }
+    
+    .code-copy-btn,
+    .code-download-btn {
         padding: 5px 8px;
         font-size: 11px;
     }
     
-    .code-copy-btn .copy-text {
+    .code-copy-btn .copy-text,
+    .code-download-btn .download-text {
         display: none;
     }
     
