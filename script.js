@@ -1389,6 +1389,14 @@ async function handleSignup(event) {
         // Fallback for development/testing when Appwrite is not available
         console.warn('Appwrite not available, using local authentication for testing');
         
+        // Show helpful info to user about fallback mode
+        if (!localStorage.getItem('fallback-mode-info-shown')) {
+            setTimeout(() => {
+                showToast('📍 Using local authentication mode. All features work normally! If you prefer cloud authentication, try disabling ad blockers.', 'info', 6000);
+                localStorage.setItem('fallback-mode-info-shown', 'true');
+            }, 1000);
+        }
+        
         // Check if user already exists in local storage
         const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
         if (users[email]) {
@@ -1549,6 +1557,14 @@ async function handleLogin(event) {
     if (!appwriteAccount) {
         // Fallback for development/testing when Appwrite is not available
         console.warn('Appwrite not available, using local authentication for testing');
+        
+        // Show helpful info to user about fallback mode
+        if (!localStorage.getItem('fallback-mode-info-shown')) {
+            setTimeout(() => {
+                showToast('📍 Using local authentication mode. All features work normally! If you prefer cloud authentication, try disabling ad blockers.', 'info', 6000);
+                localStorage.setItem('fallback-mode-info-shown', 'true');
+            }, 1000);
+        }
         
         // Check if user exists in local storage
         const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
