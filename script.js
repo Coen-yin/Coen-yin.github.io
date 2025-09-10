@@ -1436,7 +1436,6 @@ async function handleSignup(event) {
     try {
         // Create account with Appwrite v20
         const response = await appwriteAccount.createAccount(
-            'unique()', // Auto-generate unique user ID  
             email,
             password,
             name
