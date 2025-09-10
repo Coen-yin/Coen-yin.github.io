@@ -3432,30 +3432,15 @@ function createCodeBlock(code, language = '') {
                         ${lineCount > 1 ? `<span class="line-count">${lineCount} lines</span>` : ''}
                     </div>
                     <div class="code-actions">
-                        <button class="code-action-btn code-copy-btn" 
-                                data-code-id="${blockId}" 
-                                data-action="copy"
-                                title="Copy code to clipboard"
-                                aria-label="Copy code">
+                        <button class="code-action-btn code-copy-btn" data-code-id="${blockId}" data-action="copy" title="Copy code to clipboard" aria-label="Copy code">
                             <i class="fas fa-copy"></i>
                             <span class="action-text">Copy</span>
                         </button>
-                        <button class="code-action-btn code-download-btn" 
-                                data-code-id="${blockId}" 
-                                data-action="download"
-                                data-extension="${fileExtension}"
-                                data-language-name="${langInfo.name}"
-                                title="Download as ${fileExtension} file"
-                                aria-label="Download code as file">
+                        <button class="code-action-btn code-download-btn" data-code-id="${blockId}" data-action="download" data-extension="${fileExtension}" data-language-name="${langInfo.name}" title="Download as ${fileExtension} file" aria-label="Download code as file">
                             <i class="fas fa-download"></i>
                             <span class="action-text">Download</span>
                         </button>
-                        ${lineCount > 5 ? `
-                        <button class="code-action-btn code-fold-btn" 
-                                data-code-id="${blockId}" 
-                                data-action="fold"
-                                title="Toggle code folding"
-                                aria-label="Toggle code folding">
+                        ${lineCount > 5 ? `<button class="code-action-btn code-fold-btn" data-code-id="${blockId}" data-action="fold" title="Toggle code folding" aria-label="Toggle code folding">
                             <i class="fas fa-chevron-up"></i>
                         </button>` : ''}
                     </div>
@@ -3808,7 +3793,7 @@ function downloadCodeBlock(blockId, fileExtension, languageName) {
 }
 
 function toggleCodeFold(blockId, buttonElement) {
-    const codeContainer = document.querySelector(`[data-code-id="${blockId}"]`).closest('.code-container');
+    const codeContainer = buttonElement.closest('.code-container');
     const codeContent = codeContainer.querySelector('.code-content');
     const icon = buttonElement.querySelector('i');
     
