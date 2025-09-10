@@ -1434,9 +1434,8 @@ async function handleSignup(event) {
     }
     
     try {
-        // Create account with Appwrite
-        const response = await appwriteAccount.create(
-            'unique()', // Let Appwrite generate ID
+        // Create account with Appwrite v20
+        const response = await appwriteAccount.createEmailPassword(
             email,
             password,
             name
@@ -1444,21 +1443,55 @@ async function handleSignup(event) {
         
         console.log('Account created:', response);
         
+        // Create session immediately for v20
+        await appwriteAccount.createSession(email, password);
+        
         // Send email verification
         try {
             await appwriteAccount.createVerification(window.location.origin + '/verify.html');
             console.log('Verification email sent');
             
+            // Get user data after session creation
+            const user = await appwriteAccount.get();
+            
+            // Set up user object
+            currentUser = {
+                name: user.name,
+                email: user.email,
+                appwriteId: user.$id,
+                isPro: false,
+                isAdmin: false,
+                isOwner: email === 'coenyin9@gmail.com',
+                profilePhoto: null,
+                emailVerified: user.emailVerification || false
+            };
+            
+            // Set admin/owner status for the owner account
+            if (currentUser.isOwner) {
+                currentUser.isAdmin = true;
+                currentUser.isPro = true;
+            }
+            
+            localStorage.setItem('talkie-user', JSON.stringify(currentUser));
+            
+            // Store user in admin user management system
+            storeUserInAdminSystem(currentUser);
+            
+            // Check for pending pro upgrade
+            if (sessionStorage.getItem('pendingProUpgrade') === 'true') {
+                sessionStorage.removeItem('pendingProUpgrade');
+                upgradeToPro();
+            }
+            
             hideAuthModal();
-            showToast(`Account created! Please check your email (${email}) to verify your account before signing in.`, 'info', 8000);
+            updateUserInterface();
+            initializeTheme();
+            showToast(`✅ Signup successful! Check your email for verification.`, 'success');
             
         } catch (verificationError) {
             console.error('Failed to send verification email:', verificationError);
             
-            // Still allow login even if verification email fails
-            await appwriteAccount.createEmailSession(email, password);
-            
-            // Get user data
+            // Get user data even if verification email fails
             const user = await appwriteAccount.get();
             
             // Set up user object
@@ -1605,8 +1638,8 @@ async function handleLogin(event) {
     }
     
     try {
-        // Create session with Appwrite
-        await appwriteAccount.createEmailSession(email, password);
+        // Create session with Appwrite v20
+        await appwriteAccount.createSession(email, password);
         
         // Get user data
         const user = await appwriteAccount.get();
