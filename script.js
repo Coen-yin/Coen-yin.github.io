@@ -21,6 +21,7 @@ function initializePuter() {
 // Appwrite Configuration
 const APPWRITE_ENDPOINT = 'https://syd.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = '68bb8b8b00136de837e5';
+const APPWRITE_SERVER_API_KEY = 'standard_19b5bb2db393e1df689b8275ea2129dadbe72f183e10739fe087c76f239a03748b1967ee7bbe6533129fe087c76f239a03748b1967ee7bbe6533125';
 
 // Initialize Appwrite client
 let appwriteClient = null;
@@ -39,83 +40,87 @@ if (typeof Appwrite !== 'undefined') {
     appwriteAccount = new Account(appwriteClient);
     appwriteDatabases = new Databases(appwriteClient);
     
-    // Note: Server-side operations with API keys are not available in the web SDK
-    // Admin operations will use client-side authentication instead
-    appwriteUsers = null; // Will be initialized when needed with proper auth
+    // Initialize server client for admin operations
+    let serverClient = new Client();
+    serverClient.setEndpoint(APPWRITE_ENDPOINT);
+    serverClient.setProject(APPWRITE_PROJECT_ID);
+    serverClient.setKey(APPWRITE_SERVER_API_KEY);
+    
+    appwriteUsers = new Users(serverClient);
 } else {
     console.warn('Appwrite SDK not loaded - authentication will be disabled');
 }
 
-// Client-side user management functions (fallback for development)
-// Note: In production, admin operations should be handled by a proper backend API
+// Server-side API functions for admin operations
+async function makeServerRequest(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${APPWRITE_ENDPOINT}${endpoint}`, {
+            method: options.method || 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': APPWRITE_PROJECT_ID,
+                'X-Appwrite-Key': APPWRITE_SERVER_API_KEY,
+                ...options.headers
+            },
+            body: options.body ? JSON.stringify(options.body) : null
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Server request failed');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Server request error:', error);
+        throw error;
+    }
+}
 
+// Get all users (admin only)
 async function getAllUsers() {
     try {
-        // Fallback to local storage for development/testing
-        console.warn('Using local storage fallback for user management');
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        
-        // Convert to array format similar to Appwrite API
-        return Object.values(users).map(user => ({
-            $id: user.appwriteId || 'local_' + user.email.replace(/[^a-zA-Z0-9]/g, ''),
-            email: user.email,
-            name: user.name,
-            emailVerification: user.emailVerified || false,
-            $createdAt: user.signupDate || new Date().toISOString(),
-            $updatedAt: user.lastLoginDate || new Date().toISOString()
-        }));
+        const response = await makeServerRequest('/users');
+        return response.users || [];
     } catch (error) {
         console.error('Error fetching all users:', error);
         return [];
     }
 }
 
-// Get user by ID (admin only) - fallback implementation
+// Get user by ID (admin only)
 async function getUserById(userId) {
     try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const user = Object.values(users).find(u => u.appwriteId === userId || u.email === userId);
-        return user || null;
+        const response = await makeServerRequest(`/users/${userId}`);
+        return response;
     } catch (error) {
         console.error('Error fetching user:', error);
         return null;
     }
 }
 
-// Update user (admin only) - fallback implementation
+// Update user (admin only)
 async function updateUser(userId, data) {
     try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const userEmail = Object.keys(users).find(email => 
-            users[email].appwriteId === userId || email === userId
-        );
-        
-        if (userEmail && users[userEmail]) {
-            Object.assign(users[userEmail], data);
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-            return users[userEmail];
-        }
-        throw new Error('User not found');
+        const response = await makeServerRequest(`/users/${userId}`, {
+            method: 'PATCH',
+            body: data
+        });
+        return response;
     } catch (error) {
         console.error('Error updating user:', error);
         throw error;
     }
 }
 
-// Delete user (admin only) - fallback implementation
+// Delete user (admin only)
 async function deleteUserById(userId) {
     try {
-        const users = JSON.parse(localStorage.getItem('talkie-users') || '{}');
-        const userEmail = Object.keys(users).find(email => 
-            users[email].appwriteId === userId || email === userId
-        );
-        
-        if (userEmail && users[userEmail]) {
-            delete users[userEmail];
-            localStorage.setItem('talkie-users', JSON.stringify(users));
-            return { success: true };
-        }
-        throw new Error('User not found');
+        const response = await makeServerRequest(`/users/${userId}`, {
+            method: 'DELETE'
+        });
+        return response;
     } catch (error) {
         console.error('Error deleting user:', error);
         throw error;
