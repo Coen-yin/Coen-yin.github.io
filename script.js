@@ -42,10 +42,9 @@ if (typeof Appwrite !== 'undefined') {
     
     // Initialize server client for admin operations
     let serverClient = new Client();
-    serverClient
-        .setEndpoint(APPWRITE_ENDPOINT)
-        .setProject(APPWRITE_PROJECT_ID)
-        .setKey(APPWRITE_SERVER_API_KEY);
+    serverClient.setEndpoint(APPWRITE_ENDPOINT);
+    serverClient.setProject(APPWRITE_PROJECT_ID);
+    serverClient.setKey(APPWRITE_SERVER_API_KEY);
     
     appwriteUsers = new Users(serverClient);
 } else {
