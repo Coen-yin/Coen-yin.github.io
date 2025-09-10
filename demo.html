@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Project Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .demo-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .demo-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .demo-content {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f7fafc;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .test-output {
+            margin-top: 20px;
+            padding: 15px;
+            background: #edf2f7;
+            border-radius: 6px;
+            border-left: 4px solid #4299e1;
+        }
+        .success {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+        .error {
+            border-left-color: #f56565;
+            background: #fed7d7;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-title">🚀 Enhanced Code Block Sorting Demo</div>
+        <div class="demo-content">
+            <p>This demo shows how the enhanced code block system works when AI provides multiple languages for a website project.</p>
+            
+            <button onclick="simulateWebProjectResponse()">Simulate HTML/CSS/JS Website Response</button>
+            <button onclick="simulatePythonProjectResponse()">Simulate Python Multi-File Project</button>
+            <button onclick="simulateMixedLanguageResponse()">Simulate Mixed Language Priority Sorting</button>
+            
+            <div id="output" class="test-output" style="display: none;">
+                <div id="result-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Import the enhanced functions from the main script
+        function getLanguageInfo(language) {
+            const langMap = {
+                'html': { name: 'HTML', icon: 'fab fa-html5', color: '#e34c26' },
+                'css': { name: 'CSS', icon: 'fab fa-css3-alt', color: '#1572b6' },
+                'javascript': { name: 'JavaScript', icon: 'fab fa-js-square', color: '#f7df1e' },
+                'python': { name: 'Python', icon: 'fab fa-python', color: '#3776ab' },
+                'text': { name: 'Text', icon: 'fas fa-file-alt', color: '#6c757d' }
+            };
+            return langMap[language] || langMap['text'];
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function simulateWebProjectResponse() {
+            const htmlCssJsContent = `Here's a complete HTML, CSS, and JavaScript website with a color-changing button:
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Changing Button</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Color Button Demo</h1>
+        <button id="colorButton" class="color-btn">Click me to change colors!</button>
+        <p id="status">Button is ready to change colors</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
+\`\`\`
+
+\`\`\`css
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    text-align: center;
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.color-btn {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.color-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+#status {
+    color: #666;
+    font-style: italic;
+}
+\`\`\`
+
+\`\`\`javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const button = document.getElementById('colorButton');
+    const status = document.getElementById('status');
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#fecca7', '#ff9ff3'];
+    let currentColorIndex = 0;
+    
+    button.addEventListener('click', function() {
+        currentColorIndex = (currentColorIndex + 1) % colors.length;
+        const newColor = colors[currentColorIndex];
+        
+        button.style.backgroundColor = newColor;
+        status.textContent = \`Button color changed to \${newColor}\`;
+        
+        // Add a fun animation
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+        }, 150);
+    });
+    
+    console.log('Color changing button initialized!');
+});
+\`\`\`
+
+This creates a beautiful, interactive website with a button that cycles through different colors when clicked!`;
+            
+            testCodeBlockProcessing(htmlCssJsContent, 'Web Project (HTML/CSS/JS)');
+        }
+        
+        function simulatePythonProjectResponse() {
+            const pythonContent = `Here's a complete Python calculator project with multiple modules:
+
+\`\`\`python
+# main.py - Entry point for the calculator application
+from calculator import Calculator
+from utils import print_welcome, get_user_input, display_result
+
+def main():
+    print_welcome()
+    calc = Calculator()
+    
+    while True:
+        try:
+            num1 = get_user_input("Enter first number: ")
+            operation = input("Enter operation (+, -, *, /) or 'quit' to exit: ").strip()
+            
+            if operation.lower() == 'quit':
+                print("Thanks for using the calculator!")
+                break
+                
+            num2 = get_user_input("Enter second number: ")
+            
+            if operation == '+':
+                result = calc.add(num1, num2)
+            elif operation == '-':
+                result = calc.subtract(num1, num2)
+            elif operation == '*':
+                result = calc.multiply(num1, num2)
+            elif operation == '/':
+                result = calc.divide(num1, num2)
+            else:
+                print("Invalid operation!")
+                continue
+                
+            display_result(num1, operation, num2, result)
+            
+        except ValueError as e:
+            print(f"Error: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+
+if __name__ == "__main__":
+    main()
+\`\`\`
+
+\`\`\`python
+# calculator.py - Core calculator functionality
+class Calculator:
+    """A simple calculator class with basic mathematical operations."""
+    
+    def __init__(self):
+        self.history = []
+    
+    def add(self, a, b):
+        """Add two numbers and return the result."""
+        result = a + b
+        self._add_to_history(f"{a} + {b} = {result}")
+        return result
+    
+    def subtract(self, a, b):
+        """Subtract b from a and return the result."""
+        result = a - b
+        self._add_to_history(f"{a} - {b} = {result}")
+        return result
+    
+    def multiply(self, a, b):
+        """Multiply two numbers and return the result."""
+        result = a * b
+        self._add_to_history(f"{a} * {b} = {result}")
+        return result
+    
+    def divide(self, a, b):
+        """Divide a by b and return the result."""
+        if b == 0:
+            raise ValueError("Cannot divide by zero!")
+        result = a / b
+        self._add_to_history(f"{a} / {b} = {result}")
+        return result
+    
+    def _add_to_history(self, operation):
+        """Add operation to history."""
+        self.history.append(operation)
+    
+    def get_history(self):
+        """Get calculation history."""
+        return self.history.copy()
+    
+    def clear_history(self):
+        """Clear calculation history."""
+        self.history.clear()
+\`\`\`
+
+\`\`\`python
+# utils.py - Utility functions for the calculator
+import sys
+
+def print_welcome():
+    """Print welcome message and instructions."""
+    print("=" * 50)
+    print("🧮 PYTHON CALCULATOR")
+    print("=" * 50)
+    print("Welcome to the Advanced Python Calculator!")
+    print("Supported operations: +, -, *, /")
+    print("Type 'quit' to exit the program")
+    print("-" * 50)
+
+def get_user_input(prompt):
+    """Get numeric input from user with validation."""
+    while True:
+        try:
+            user_input = input(prompt).strip()
+            if user_input.lower() == 'quit':
+                print("Goodbye!")
+                sys.exit(0)
+            return float(user_input)
+        except ValueError:
+            print("Please enter a valid number!")
+
+def display_result(num1, operation, num2, result):
+    """Display calculation result in a formatted way."""
+    print()
+    print("📊 RESULT:")
+    print(f"   {num1} {operation} {num2} = {result}")
+    print("-" * 30)
+    print()
+
+def format_number(num):
+    """Format number for display (remove unnecessary decimal places)."""
+    if isinstance(num, float) and num.is_integer():
+        return int(num)
+    return round(num, 6)
+\`\`\`
+
+This is a well-structured Python project with separate modules for organization and maintainability!`;
+            
+            testCodeBlockProcessing(pythonContent, 'Python Multi-File Project');
+        }
+        
+        function simulateMixedLanguageResponse() {
+            const mixedContent = `Here are code examples in different programming languages with priority sorting:
+
+\`\`\`python
+# Python code - Should be sorted after web languages
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+print("Fibonacci sequence:")
+for i in range(10):
+    print(f"F({i}) = {fibonacci(i)}")
+\`\`\`
+
+\`\`\`html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mixed Language Demo</title>
+</head>
+<body>
+    <h1>HTML should come first</h1>
+    <div id="content">Mixed language demonstration</div>
+</body>
+</html>
+\`\`\`
+
+\`\`\`css
+/* CSS should come second */
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    color: white;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+\`\`\`
+
+\`\`\`javascript
+// JavaScript should come third
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('content');
+    content.style.transition = 'all 0.3s ease';
+    
+    setInterval(() => {
+        content.style.transform = content.style.transform === 'scale(1.1)' 
+            ? 'scale(1)' 
+            : 'scale(1.1)';
+    }, 1000);
+});
+\`\`\`
+
+The system should automatically sort these by priority: HTML → CSS → JavaScript → Python`;
+            
+            testCodeBlockProcessing(mixedContent, 'Mixed Language Priority Sorting');
+        }
+        
+        function testCodeBlockProcessing(content, testName) {
+            const outputDiv = document.getElementById('output');
+            const resultDiv = document.getElementById('result-content');
+            
+            outputDiv.style.display = 'block';
+            
+            // Extract code blocks using regex
+            const codeBlockPattern = /```(\w*)\n?([\s\S]*?)```/g;
+            const codeBlocks = [];
+            let match;
+            
+            while ((match = codeBlockPattern.exec(content)) !== null) {
+                codeBlocks.push({
+                    language: match[1] || '',
+                    code: match[2].trim(),
+                    index: match.index
+                });
+            }
+            
+            let result = `<strong>Test: ${testName}</strong><br><br>`;
+            
+            if (codeBlocks.length === 0) {
+                result += '❌ No code blocks found';
+                outputDiv.className = 'test-output error';
+            } else {
+                result += `✅ Found ${codeBlocks.length} code blocks:<br>`;
+                
+                const languages = codeBlocks.map(block => block.language);
+                result += `<strong>Languages detected:</strong> ${languages.join(', ')}<br>`;
+                
+                // Check for web project organization
+                const webLanguages = ['html', 'css', 'javascript'];
+                const hasWebLanguages = webLanguages.filter(lang => languages.includes(lang));
+                
+                if (hasWebLanguages.length >= 2) {
+                    result += `<strong>🌐 Web Project Detected!</strong> Contains: ${hasWebLanguages.join(', ')}<br>`;
+                    result += `Should be organized as a web project with download options.<br>`;
+                } else if (languages.every(lang => lang === 'python') && languages.length > 1) {
+                    result += `<strong>🐍 Python Multi-File Project!</strong> Contains ${languages.length} Python files.<br>`;
+                } else {
+                    result += `<strong>📊 Mixed Languages!</strong> Should be sorted by priority.<br>`;
+                }
+                
+                result += `<br><strong>Expected Processing:</strong><br>`;
+                if (hasWebLanguages.length >= 2) {
+                    result += `• Organize into web project container<br>`;
+                    result += `• Sort files: HTML → CSS → JavaScript<br>`;
+                    result += `• Provide "Download Project" and "Copy All" buttons<br>`;
+                    result += `• Show individual file names (index.html, styles.css, script.js)<br>`;
+                } else {
+                    result += `• Sort by language priority<br>`;
+                    result += `• Apply individual code block styling<br>`;
+                    result += `• Provide copy and download for each block<br>`;
+                }
+                
+                outputDiv.className = 'test-output success';
+            }
+            
+            resultDiv.innerHTML = result;
+        }
+    </script>
+</body>
+</html>
