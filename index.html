@@ -360,7 +360,7 @@
                     <div class="system-info">
                         <div class="info-item">
                             <span class="info-label">AI Model:</span>
-                            <span class="info-value">GPT-5 Nano (Puter)</span>
+                            <span class="info-value" id="currentAiModel">Talkiegenpro (Puter)</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Data Storage:</span>
@@ -590,6 +590,20 @@
                             <option value="academic">Academic</option>
                         </select>
                         <small>The personality style for AI responses</small>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>AI Model Selection</h3>
+                    <div class="setting-item">
+                        <label for="aiModel">AI Model</label>
+                        <select id="aiModel">
+                            <option value="Talkiegenpro">Talkiegenpro (Pro Performance)</option>
+                            <option value="TalkiegenFast">TalkiegenFast (Faster Responses)</option>
+                            <option value="TalkiegenLatest">TalkiegenLatest (Latest Features)</option>
+                            <option value="TalkiegenStandard">TalkiegenStandard (Standard Model)</option>
+                        </select>
+                        <small>Choose the AI model that best fits your needs</small>
                     </div>
                 </div>
 
