@@ -7,7 +7,7 @@
 function initializePuter() {
     try {
         if (typeof puter !== 'undefined') {
-            console.log('✅ Puter API initialized successfully with GPT-5 nano model');
+            console.log('✅ Puter API initialized successfully with dynamic model selection');
         } else {
             console.warn('⚠️ Puter SDK not loaded - Using fallback AI system instead');
             console.log('ℹ️ Fallback AI system provides local responses when external services are unavailable');
@@ -128,6 +128,14 @@ let chats = JSON.parse(localStorage.getItem('talkie-chats') || '{}');
 let isGenerating = false;
 let currentUser = JSON.parse(localStorage.getItem('talkie-user') || 'null');
 
+// Model Configuration - Maps display names to actual model names
+const MODEL_CONFIG = {
+    'Talkiegenpro': 'gpt-5-nano',        // Pro model (current default)
+    'TalkiegenFast': 'gpt-5-mini',       // Faster responses
+    'TalkiegenLatest': 'gpt-5-chat-latest', // Latest chat model
+    'TalkiegenStandard': 'gpt-5'         // Standard model
+};
+
 // Enhanced Context and Memory State
 let userMemory = JSON.parse(localStorage.getItem('talkie-user-memory') || '{}');
 let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-settings') || JSON.stringify({
@@ -139,7 +147,8 @@ let conversationSettings = JSON.parse(localStorage.getItem('talkie-conversation-
     rememberPreferences: true,
     enableWebSearch: true,
     searchBehavior: 'auto',
-    showSearchResults: true
+    showSearchResults: true,
+    selectedModel: 'Talkiegenpro'  // Default to pro model
 }));
 let conversationSummaries = JSON.parse(localStorage.getItem('talkie-conversation-summaries') || '{}');
 
@@ -339,6 +348,22 @@ function initializeMemorySystem() {
     } catch (error) {
         console.error('Error initializing memory system:', error);
     }
+}
+
+// Get current selected model
+function getCurrentModel() {
+    const selectedModelName = conversationSettings.selectedModel || 'Talkiegenpro';
+    return MODEL_CONFIG[selectedModelName] || 'gpt-5-nano'; // fallback to default
+}
+
+// Get model display name from actual model name
+function getModelDisplayName(actualModelName) {
+    for (const [displayName, actualName] of Object.entries(MODEL_CONFIG)) {
+        if (actualName === actualModelName) {
+            return displayName;
+        }
+    }
+    return 'Talkiegenpro'; // fallback
 }
 
 // Enhanced Context Management
@@ -802,6 +827,7 @@ function showSettingsModal() {
     document.getElementById('contextLength').value = conversationSettings.contextLength || 10;
     document.getElementById('responseStyle').value = conversationSettings.responseStyle || 'balanced';
     document.getElementById('personalityMode').value = conversationSettings.personalityMode || 'friendly';
+    document.getElementById('aiModel').value = conversationSettings.selectedModel || 'Talkiegenpro';
     document.getElementById('enableMemory').checked = conversationSettings.enableMemory !== false;
     document.getElementById('enableFollowUps').checked = conversationSettings.enableFollowUps !== false;
     document.getElementById('rememberPreferences').checked = conversationSettings.rememberPreferences !== false;
@@ -857,6 +883,7 @@ function saveSettings() {
     conversationSettings.contextLength = parseInt(document.getElementById('contextLength').value);
     conversationSettings.responseStyle = document.getElementById('responseStyle').value;
     conversationSettings.personalityMode = document.getElementById('personalityMode').value;
+    conversationSettings.selectedModel = document.getElementById('aiModel').value;
     conversationSettings.enableMemory = document.getElementById('enableMemory').checked;
     conversationSettings.enableFollowUps = document.getElementById('enableFollowUps').checked;
     conversationSettings.rememberPreferences = document.getElementById('rememberPreferences').checked;
@@ -877,6 +904,7 @@ function resetSettings() {
             enableMemory: true,
             enableFollowUps: true,
             personalityMode: 'friendly',
+            selectedModel: 'Talkiegenpro',
             rememberPreferences: true,
             enableWebSearch: true,
             searchBehavior: 'auto',
@@ -2363,7 +2391,7 @@ CURRENT CONTEXT:
                 console.log('Analyzing image with Puter AI...');
                 try {
                     aiResponse = await puter.ai.chat(contextualMessage, imageUrl, { 
-                        model: "gpt-5-nano"
+                        model: getCurrentModel()
                     });
                     console.log('Image analysis completed successfully');
                 } catch (imageError) {
@@ -2371,7 +2399,7 @@ CURRENT CONTEXT:
                     // Fallback to text-only response with image context
                     console.log('Falling back to text response with image context...');
                     aiResponse = await puter.ai.chat(`${contextualMessage} [Note: User uploaded an image but analysis failed]`, { 
-                        model: "gpt-5-nano"
+                        model: getCurrentModel()
                     });
                 }
                 // Clear the image data after processing (success or failure)
@@ -2379,7 +2407,7 @@ CURRENT CONTEXT:
             } else {
                 // Regular text chat: puter.ai.chat(message, options)
                 aiResponse = await puter.ai.chat(contextualMessage, { 
-                    model: "gpt-5-nano"
+                    model: getCurrentModel()
                 });
             }
         }
@@ -5322,6 +5350,13 @@ function loadAdminStats() {
     document.getElementById('uniqueVisitors').textContent = stats.uniqueVisitors || 0;
     document.getElementById('todayVisits').textContent = stats.dailyVisits?.[today] || 0;
     document.getElementById('registeredUsers').textContent = Object.keys(users).length;
+    
+    // Update current AI model display
+    const currentModelDisplay = conversationSettings.selectedModel || 'Talkiegenpro';
+    const currentModelElement = document.getElementById('currentAiModel');
+    if (currentModelElement) {
+        currentModelElement.textContent = `${currentModelDisplay} (Puter)`;
+    }
     
     // Load recent activity
     const activityList = document.getElementById('activityList');
