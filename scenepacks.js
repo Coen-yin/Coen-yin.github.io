@@ -33,7 +33,7 @@ const scenepacks = [
   {
     title: "Zootopia 2 Scenepack",
     category: "movies",
-    image: "https://drive.google.com/file/d/19yfh_aPqiG9h1LGFYgNRg9OiVHllXH7t/view?usp=drivesdk",
+    image: "https://whatsondisneyplus.b-cdn.net/wp-content/uploads/2025/10/zootopia-2.webp",
     download: "https://mega.nz/file/CqJFUCpD#POi01InxyCKXcZB8zxL_UcXeMBvS0GCL0zXBcRKS1ZA"
   },
   {
