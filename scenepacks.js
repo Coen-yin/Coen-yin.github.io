@@ -33,8 +33,8 @@ const scenepacks = [
   {
     title: "Zootopia 2 Scenepack",
     category: "movies",
-    image: "https://image.tmdb.org/t/p/w780/qJ2tW6WMUDux911BTUgMe1nYisJ.jpg",
-    download: "https://mega.nz"
+    image: "https://drive.google.com/file/d/19yfh_aPqiG9h1LGFYgNRg9OiVHllXH7t/view?usp=drivesdk",
+    download: "https://mega.nz/file/CqJFUCpD#POi01InxyCKXcZB8zxL_UcXeMBvS0GCL0zXBcRKS1ZA"
   },
   {
     title: "Breaking Bad Scenepack",
