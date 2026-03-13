@@ -49,10 +49,10 @@ const scenepacks = [
     download: "https://mega.nz/file/q3g2VI6R#KEGjUd1LIzSQZzC86cVc1pDPOsBO8fbJ4d9ocfxe1CY"
   },
   {
-    title: "Attack on Titan Scenepack",
+    title: "Satoru Gojo Scenepack",
     category: "anime",
-    image: "https://image.tmdb.org/t/p/w780/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg",
-    download: "https://mega.nz"
+    image: "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5a/Satoru_Gojo_arrives_on_the_battlefield_%28Anime%29.png/revision/latest?cb=20210226205256",
+    download: "https://mega.nz/file/irgXwZTZ#ieRe7xak4GYPqXzG8gZC69MBGlA0L7ECdJhqM5rPsTo"
   },
   {
     title: "Naruto Shippuden Scenepack",
