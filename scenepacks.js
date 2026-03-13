@@ -55,21 +55,10 @@ const scenepacks = [
     download: "https://mega.nz/file/irgXwZTZ#ieRe7xak4GYPqXzG8gZC69MBGlA0L7ECdJhqM5rPsTo"
   },
   {
-    title: "Naruto Shippuden Scenepack",
-    category: "anime",
-    image: "https://image.tmdb.org/t/p/w780/zAYRe2bJxpWTVrwwmBc00VFkAf4.jpg",
-    download: "https://mega.nz"
-  },
-  {
     title: "Tom Holland",
     category: "celebrities",
     image: "https://i.guim.co.uk/img/media/dd3acbcaaf6da1b900426ab7ca78bdab3338bf0b/333_91_2292_1376/master/2292.jpg?width=465&dpr=1&s=none&crop=none",
     download: "https://mega.nz/file/XqIXgIBb#QcOHTU7wM4M21FyJDOi4r-Tyfbr9tv7Kmc70kPk2A0w"
   },
-  {
-    title: "Timothée Chalamet Scenepack",
-    category: "celebrities",
-    image: "https://image.tmdb.org/t/p/w780/BE2sdjpgsa2rNTFa66f7upkaOP.jpg",
-    download: "https://mega.nz"
-  }
+
 ];
