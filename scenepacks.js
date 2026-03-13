@@ -37,10 +37,10 @@ const scenepacks = [
     download: "https://mega.nz/file/CqJFUCpD#POi01InxyCKXcZB8zxL_UcXeMBvS0GCL0zXBcRKS1ZA"
   },
   {
-    title: "Breaking Bad Scenepack",
+    title: "Breaking Bad Scenepack 4K",
     category: "tvshows",
-    image: "https://image.tmdb.org/t/p/w780/ggFHVNu6YYI5L9pCfOacjizRGt.jpg",
-    download: "https://mega.nz"
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSaQRZiardD35MQnr7rO-B75kFN9fMnqVU1RHjy4E0EUnDv98jrXtflyM8o&s=10",
+    download: "https://mega.nz/file/y6hQ2IRY#6QNcbTWXXsyb9sVS25qmu7aOV9vQaxMM06xH4Xl6434"
   },
   {
     title: "Stranger Things Scenepack",
