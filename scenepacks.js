@@ -43,10 +43,10 @@ const scenepacks = [
     download: "https://mega.nz/file/y6hQ2IRY#6QNcbTWXXsyb9sVS25qmu7aOV9vQaxMM06xH4Xl6434"
   },
   {
-    title: "Stranger Things Scenepack",
+    title: "Steve Harrington Scenepack",
     category: "tvshows",
-    image: "https://image.tmdb.org/t/p/w780/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
-    download: "https://mega.nz"
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRkfEeUswaA93Jlty1qKwtnWNOQWfDPaNBXAF095pbmcZL3wajsI6jdZzU&s=10",
+    download: "https://mega.nz/file/q3g2VI6R#KEGjUd1LIzSQZzC86cVc1pDPOsBO8fbJ4d9ocfxe1CY"
   },
   {
     title: "Attack on Titan Scenepack",
