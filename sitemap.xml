@@ -7,9 +7,93 @@
 
 <url>
   <loc>https://talkiegen.me/</loc>
-  <lastmod>2026-03-14T07:45:00+00:00</lastmod>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
   <changefreq>weekly</changefreq>
   <priority>1.0</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/anime-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/movie-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/tv-show-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/celebrity-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/free-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/4k-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.8</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/best-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/jujutsu-kaisen-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.8</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/breaking-bad-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.8</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/stranger-things-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.8</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/what-is-a-scenepack/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>monthly</changefreq>
+  <priority>0.7</priority>
+</url>
+
+<url>
+  <loc>https://talkiegen.me/how-to-download-scenepacks/</loc>
+  <lastmod>2026-03-14T08:12:00+00:00</lastmod>
+  <changefreq>monthly</changefreq>
+  <priority>0.7</priority>
 </url>
 
 </urlset>

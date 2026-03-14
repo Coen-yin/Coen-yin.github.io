@@ -159,6 +159,27 @@
       border-radius: 6px;
       border: 1px solid rgba(124,58,237,.2);
     }
+    .header-nav {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .header-nav a {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 4px 11px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .header-nav a:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+      background: rgba(124,58,237,.08);
+    }
 
     /* ── Hero ──────────────────────────────────────────── */
     .hero {
@@ -394,6 +415,7 @@
     /* ── Responsive ───────────────────────────────────── */
     @media (max-width: 600px) {
       .header-badge { display: none; }
+      .header-nav { display: none; }
       .hero { padding: 56px 16px 36px; }
       .grid { padding: 0 16px 60px; gap: 16px; }
       .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -493,6 +515,15 @@
         </svg>
         <span>SceneVault</span>
       </a>
+      <div class="header-nav">
+        <a href="/anime-scenepacks/">Anime</a>
+        <a href="/movie-scenepacks/">Movies</a>
+        <a href="/tv-show-scenepacks/">TV Shows</a>
+        <a href="/celebrity-scenepacks/">Celebrities</a>
+        <a href="/free-scenepacks/">Free</a>
+        <a href="/best-scenepacks/">Best Picks</a>
+        <a href="/4k-scenepacks/">4K</a>
+      </div>
       <div class="header-badge">Premium Scenepacks</div>
     </div>
   </header>
@@ -606,7 +637,21 @@
 
   <!-- ─── Footer ──────────────────────────────────── -->
   <footer>
-    &copy; 2026 SceneVault. Built for editors, by editors. &mdash; Made by <strong>Crazy.mp4</strong>
+    &copy; 2026 SceneVault. Built for editors, by editors. &mdash; Made by <strong>Crazy.mp4</strong><br>
+    <div style="margin-top:10px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px 18px; font-size:.78rem;">
+      <a href="/anime-scenepacks/">Anime Scenepacks</a>
+      <a href="/movie-scenepacks/">Movie Scenepacks</a>
+      <a href="/tv-show-scenepacks/">TV Show Scenepacks</a>
+      <a href="/celebrity-scenepacks/">Celebrity Scenepacks</a>
+      <a href="/free-scenepacks/">Free Scenepacks</a>
+      <a href="/4k-scenepacks/">4K Scenepacks</a>
+      <a href="/best-scenepacks/">Best Scenepacks</a>
+      <a href="/jujutsu-kaisen-scenepacks/">JJK Scenepacks</a>
+      <a href="/breaking-bad-scenepacks/">Breaking Bad Scenepacks</a>
+      <a href="/stranger-things-scenepacks/">Stranger Things Scenepacks</a>
+      <a href="/what-is-a-scenepack/">What is a Scenepack?</a>
+      <a href="/how-to-download-scenepacks/">How to Download Scenepacks</a>
+    </div>
   </footer>
 
   <!-- ─── Data file (edit scenepacks.js to add packs) ─ -->
