@@ -60,5 +60,11 @@ const scenepacks = [
     image: "https://i.guim.co.uk/img/media/dd3acbcaaf6da1b900426ab7ca78bdab3338bf0b/333_91_2292_1376/master/2292.jpg?width=465&dpr=1&s=none&crop=none",
     download: "https://mega.nz/file/XqIXgIBb#QcOHTU7wM4M21FyJDOi4r-Tyfbr9tv7Kmc70kPk2A0w"
   },
+  {
+    title: "Joe Goldberg Scenepack",
+    category: "tvshows",
+    image: "https://c.files.bbci.co.uk/170EF/production/_128574449_you_s4_e3_00_05_23_22_r.jpg",
+    download: "https://mega.nz/file/jmJ0XJYL#xG-0RRGjeY8C9y6egCA6xwsKIlPrwzhuJrjzGsUwA4g"
+  },
 
 ];
