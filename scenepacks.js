@@ -66,5 +66,11 @@ const scenepacks = [
     image: "https://c.files.bbci.co.uk/170EF/production/_128574449_you_s4_e3_00_05_23_22_r.jpg",
     download: "https://mega.nz/file/jmJ0XJYL#xG-0RRGjeY8C9y6egCA6xwsKIlPrwzhuJrjzGsUwA4g"
   },
+  {
+    title: "Monkey D Luffy Scenepack",
+    category: "tvshows",
+    image: "https://variety.com/wp-content/uploads/2023/06/One-Piece-Netflix.jpg?w=1000&h=563&crop=1",
+    download: "https://mega.nz/file/PrYWGDwB#rxHAVNYGwQ3VUmnLkisnzlhow3vpF1vSyG9rInFRrbY"
+  },
 
 ];
