@@ -72,5 +72,10 @@ const scenepacks = [
     image: "https://variety.com/wp-content/uploads/2023/06/One-Piece-Netflix.jpg?w=1000&h=563&crop=1",
     download: "https://mega.nz/file/PrYWGDwB#rxHAVNYGwQ3VUmnLkisnzlhow3vpF1vSyG9rInFRrbY"
   },
-
+  {
+    title: "Clark Kent Smallville (4K Enhanced)",
+    category: "tvshows",
+    image: "https://images2.alphacoders.com/115/thumb-1920-1158499.jpg",
+    download: "https://mega.nz/file/q7p3DS7Q#R7QSR6Db2LyZJMWlQtFY0W4-jiZH4LsOv5m6YXvQcQQ"
+  },
 ];
