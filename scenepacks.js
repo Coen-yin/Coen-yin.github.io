@@ -75,7 +75,7 @@ const scenepacks = [
   {
     title: "Clark Kent Smallville (4K Enhanced)",
     category: "tvshows",
-    image: "https://images2.alphacoders.com/115/thumb-1920-1158499.jpg",
+    image: "https://drive.google.com/file/d/1ADN3YHEckzlZ1qfBZGq7pHaR_XFhRdPQ/view?usp=drivesdk",
     download: "https://mega.nz/file/q7p3DS7Q#R7QSR6Db2LyZJMWlQtFY0W4-jiZH4LsOv5m6YXvQcQQ"
   },
 ];
