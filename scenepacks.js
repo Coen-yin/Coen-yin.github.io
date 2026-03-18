@@ -63,7 +63,7 @@ const scenepacks = [
   {
     title: "Joe Goldberg Scenepack",
     category: "tvshows",
-    image: "https://c.files.bbci.co.uk/170EF/production/_128574449_you_s4_e3_00_05_23_22_r.jpg",
+    image: "https://coen-yin.github.io/Thumbnails/Untitled%20(1).png",
     download: "https://mega.nz/file/jmJ0XJYL#xG-0RRGjeY8C9y6egCA6xwsKIlPrwzhuJrjzGsUwA4g"
   },
   {
