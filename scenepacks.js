@@ -51,7 +51,7 @@ const scenepacks = [
   {
     title: "Satoru Gojo Scenepack",
     category: "anime",
-    image: "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5a/Satoru_Gojo_arrives_on_the_battlefield_%28Anime%29.png/revision/latest?cb=20210226205256",
+    image: "https://coen-yin.github.io/Thumbnails/Untitled%20(3).png",
     download: "https://mega.nz/file/irgXwZTZ#ieRe7xak4GYPqXzG8gZC69MBGlA0L7ECdJhqM5rPsTo"
   },
   {
