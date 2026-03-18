@@ -4,209 +4,299 @@
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
 
-
+<!-- Core pages -->
 <url>
   <loc>https://talkiegen.me/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>1.00</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/anime-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/movie-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/tv-show-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/celebrity-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/free-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:18+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/best-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:18+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/4k-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
-</url>
-<url>
-  <loc>https://talkiegen.me/jujutsu-kaisen-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:18+00:00</lastmod>
-  <priority>0.80</priority>
-</url>
-<url>
-  <loc>https://talkiegen.me/breaking-bad-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
-</url>
-<url>
-  <loc>https://talkiegen.me/stranger-things-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.85</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/what-is-a-scenepack/</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.85</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/how-to-download-scenepacks/</loc>
-  <lastmod>2026-03-14T08:32:18+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.85</priority>
+</url>
+
+<!-- Aesthetic / style pages -->
+<url>
+  <loc>https://talkiegen.me/aesthetic-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
 </url>
 <url>
+  <loc>https://talkiegen.me/dark-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+
+<!-- Anime pages -->
+<url>
+  <loc>https://talkiegen.me/demon-slayer-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/attack-on-titan-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/naruto-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/one-piece-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/jujutsu-kaisen-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/my-hero-academia-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+
+<!-- TV Show pages -->
+<url>
+  <loc>https://talkiegen.me/euphoria-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/peaky-blinders-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/game-of-thrones-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/breaking-bad-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/stranger-things-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+
+<!-- Movie pages -->
+<url>
+  <loc>https://talkiegen.me/harry-potter-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/marvel-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/spider-man-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+
+<!-- Celebrity pages -->
+<url>
+  <loc>https://talkiegen.me/zendaya-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/taylor-swift-scenepacks/</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.88</priority>
+</url>
+
+<!-- Search / filter pages -->
+<url>
   <loc>https://talkiegen.me/?q=demon+slayer</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=attack+on+titan</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=naruto</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=one+piece</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=bleach</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=dragon+ball</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=my+hero+academia</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=marvel</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=dc</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=dexter</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=harry+potter</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=spider-man</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=horror</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=action</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
-  <priority>0.64</priority>
-</url>
-<url>
-  <loc>https://talkiegen.me/?q=zootopia</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=game+of+thrones</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=the+office</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=grey%27s+anatomy</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=euphoria</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=peaky+blinders</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=tom+holland</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=zendaya</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=harry+styles</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=timothee</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=sydney+sweeney</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=taylor+swift</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
 <url>
   <loc>https://talkiegen.me/?q=pedro+pascal</loc>
-  <lastmod>2026-03-14T08:32:17+00:00</lastmod>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
   <priority>0.64</priority>
 </url>
-
+<url>
+  <loc>https://talkiegen.me/?q=aesthetic</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://talkiegen.me/?q=dark</loc>
+  <lastmod>2026-03-18T00:00:00+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
 
 </urlset>
