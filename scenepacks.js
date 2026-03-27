@@ -80,8 +80,8 @@ const scenepacks = [
   },
 ];
   {
-    title: "Clark Kent Smallville (4K Enhanced)",
-    category: "tvshows",
-    image: "https://raw.githubusercontent.com/Coen-yin/Coen-yin.github.io/main/Untitled%20(1).png",
+    title: "Batman Scenepack",
+    category: "movies",
+    image: "https://talkiegen.me/Thumbnails/Scenepackbatman.png",
     download: "https://mega.nz/file/neoHiAgA#kbBmoP8xK8hWd0C922oL2gzEcdOzmPUbl7F_NHQSKtc"
   },
