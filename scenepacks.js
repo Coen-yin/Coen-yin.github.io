@@ -79,3 +79,9 @@ const scenepacks = [
     download: "https://mega.nz/file/q7p3DS7Q#R7QSR6Db2LyZJMWlQtFY0W4-jiZH4LsOv5m6YXvQcQQ"
   },
 ];
+  {
+    title: "Clark Kent Smallville (4K Enhanced)",
+    category: "tvshows",
+    image: "https://raw.githubusercontent.com/Coen-yin/Coen-yin.github.io/main/Untitled%20(1).png",
+    download: "https://mega.nz/file/neoHiAgA#kbBmoP8xK8hWd0C922oL2gzEcdOzmPUbl7F_NHQSKtc"
+  },
